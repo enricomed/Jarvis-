@@ -27,6 +27,15 @@ cd "$OJ"
 passo "3/8 Pacotes: ouvidos (faster-whisper), voz (Kokoro) e leitura de PDF"
 uv sync --extra desktop --extra voice --extra memory-pdf
 
+passo "3b/8 Peça de memória (Rust): necessária para a base de conhecimento"
+if ! command -v cargo >/dev/null && [ ! -x "$HOME/.cargo/bin/cargo" ]; then
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+fi
+export PATH="$HOME/.cargo/bin:$PATH"
+rustup update stable >/dev/null 2>&1 || true
+uv run maturin develop --release -m rust/crates/openjarvis-python/Cargo.toml
+uv run python -c "import openjarvis_rust; print('Peça de memória: ok')"
+
 passo "4/8 Baixando o cérebro: $MODELO (pode levar alguns minutos)"
 ollama pull "$MODELO"
 

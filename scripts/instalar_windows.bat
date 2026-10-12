@@ -34,6 +34,12 @@ echo ==^> 3/7 Pacotes: ouvidos, voz e leitura de PDF
 uv sync --extra desktop --extra voice --extra memory-pdf || exit /b 1
 
 echo.
+echo ==^> 3b/7 Peca de memoria (Rust): necessaria para a base de conhecimento
+where cargo >nul 2>nul || winget install -e --id Rustlang.Rustup --accept-source-agreements --accept-package-agreements
+set "PATH=%USERPROFILE%\.cargo\bin;%PATH%"
+uv run maturin develop --release -m rust\crates\openjarvis-python\Cargo.toml || echo AVISO: peca de memoria nao montou. Veja docs\SE-TRAVAR.md. O resto funciona.
+
+echo.
 echo ==^> 4/7 Baixando o cerebro: %MODELO% (pode levar alguns minutos)
 ollama pull %MODELO% || (echo Abra o app Ollama ^(fica ao lado do relogio^) e rode de novo. & exit /b 1)
 
