@@ -21,7 +21,8 @@ Base: [OpenJarvis](https://github.com/open-jarvis/OpenJarvis) (Stanford), seguin
 2. **Regra de verdade embutida**: ele é instruído a nunca inventar resolução, código TUSS, registro ANVISA, dose ou referência, e a dizer quando não sabe.
 3. **Cuidado com LGPD**: tudo local; ele lembra de anonimizar dado de paciente. Veja [docs/SEGURANCA-LGPD.md](docs/SEGURANCA-LGPD.md).
 4. **Base de conhecimento**: coloque PDFs em `conhecimento/` e ele consulta antes de responder.
-5. **Modo show**: diga **"Olá, Jarvis"** (ou bata duas palmas) e converse por voz sem apertar nada.
+5. **App com painel holográfico**: abre pelo Dock ou Spotlight, ouve "Olá, Jarvis", mostra tudo o que ele faz e aceita comandos digitados.
+6. **Ações por voz**: pesquisa na internet, lembretes, agenda, notas, arquivos e tarefas no Chrome (TopSaúde, Outlook Web), sempre com confirmação por voz e **dupla confirmação para a MedSenior**.
 
 ## Instalação (escolha uma)
 
@@ -51,7 +52,8 @@ jarvis                                         # conversa por texto
 jarvis chat --voice                            # conversa por voz
 jarvis chat --persona opme                     # modo OPME
 jarvis ask --persona comunicacao "E-mail aos cooperados avisando a nova rotina de OPME"
-bash scripts/show.sh                           # diga "Olá, Jarvis" (Windows: scripts\show.bat)
+bash scripts/criar_app_mac.sh                  # cria o app Jarvis (depois abra pelo Spotlight)
+bash scripts/show.sh                           # versão Terminal: diga "Olá, Jarvis"
 bash scripts/pesquisa.sh "..."                 # pesquisa na internet (nuvem, depois de scripts/chave.sh)
 ```
 
@@ -61,7 +63,8 @@ Mais exemplos em [docs/COMO-USAR.md](docs/COMO-USAR.md). Se algo travar: [docs/S
 
 ```
 perfil/            quem você é (USER.md), memória (MEMORY.md) e as 4 personas
-scripts/           instalação Mac/Windows, aplicar perfil, modo palma
+scripts/           instalação, perfil, voz, ações, nuvem e servidor do app
+app/               tela do app (painel) e ícone
 conhecimento/      seus PDFs de referência (não vão para o GitHub)
 voz/               jingle de abertura do modo show (opcional)
 docs/              como usar, problemas comuns, segurança

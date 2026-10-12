@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>J.A.R.V.I.S.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --fundo:#02070d; --fundo2:#061421; --ciano:#35e6ff; --ciano-forte:#9ff6ff; --ciano-fraco:rgba(53,230,255,.18);
+  --linha:rgba(53,230,255,.35); --ambar:#ffb547; --violeta:#b48cff; --verde:#5dffa8; --vermelho:#ff5d6c;
+  --texto:#cfefff; --texto-fraco:#6f9bb0; --cor:var(--ciano);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:radial-gradient(ellipse at 50% 45%,#0a2233 0%,var(--fundo2) 35%,var(--fundo) 75%);color:var(--texto);
+  font-family:Rajdhani,system-ui,sans-serif;overflow:hidden;user-select:none}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.25;
+  background-image:linear-gradient(var(--ciano-fraco) 1px,transparent 1px),linear-gradient(90deg,var(--ciano-fraco) 1px,transparent 1px);
+  background-size:42px 42px;mask-image:radial-gradient(ellipse at center,#000 30%,transparent 80%)}
+body::after{content:"";position:fixed;left:0;right:0;height:120px;top:-120px;pointer-events:none;
+  background:linear-gradient(transparent,rgba(53,230,255,.06),transparent);animation:varredura 7s linear infinite}
+@keyframes varredura{to{top:100%}}
+.grade{position:relative;display:grid;grid-template-columns:minmax(260px,1fr) minmax(420px,1.4fr) minmax(260px,1fr);
+  grid-template-rows:auto 1fr auto;gap:18px;height:100vh;padding:18px 22px}
+header{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;font-family:Orbitron;letter-spacing:.25em;font-size:12px;color:var(--texto-fraco)}
+header b{color:var(--ciano);font-weight:600}
+.painel{position:relative;border:1px solid var(--linha);background:linear-gradient(180deg,rgba(6,30,46,.55),rgba(2,10,18,.35));
+  padding:16px 16px 14px;min-height:0;display:flex;flex-direction:column;backdrop-filter:blur(2px);
+  clip-path:polygon(0 14px,14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%)}
+.painel::before{content:"";position:absolute;top:0;left:14px;width:60px;height:2px;background:var(--ciano);box-shadow:0 0 10px var(--ciano)}
+.titulo{font-family:Orbitron;font-size:11px;letter-spacing:.3em;color:var(--ciano);margin-bottom:12px;display:flex;justify-content:space-between}
+.titulo span{color:var(--texto-fraco)}
+/* registro */
+#registro{flex:1;overflow-y:auto;padding-right:6px;display:flex;flex-direction:column;gap:10px;scrollbar-width:thin;scrollbar-color:var(--linha) transparent}
+.msg{font-size:15px;line-height:1.35;padding:8px 10px;border-left:2px solid var(--linha);background:rgba(53,230,255,.04);white-space:pre-wrap;user-select:text}
+.msg .quem{display:block;font-family:Orbitron;font-size:9px;letter-spacing:.25em;color:var(--texto-fraco);margin-bottom:3px}
+.msg.voce{border-color:var(--ambar)} .msg.voce .quem{color:var(--ambar)}
+.msg.jarvis{border-color:var(--ciano)} .msg.jarvis .quem{color:var(--ciano)}
+.msg.sistema{border-color:var(--violeta);font-size:13px;color:var(--texto-fraco)}
+.msg.alerta{border-color:var(--vermelho);color:#ffd0d5}
+/* centro */
+.centro{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:0;position:relative}
+.reator{position:relative;width:min(48vh,42vw);aspect-ratio:1}
+.reator svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.giro{transform-origin:50% 50%;animation:girar var(--vel,30s) linear infinite}
+.giro.inv{animation-direction:reverse}
+@keyframes girar{to{transform:rotate(360deg)}}
+.reator .anel{fill:none;stroke:var(--cor);transition:stroke .5s}
+.brilho{filter:drop-shadow(0 0 6px var(--cor)) drop-shadow(0 0 18px var(--cor))}
+#nucleo{transition:r .12s ease-out,fill .5s}
+.rotulo{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;text-align:center}
+.rotulo .nome{font-family:Orbitron;font-weight:800;font-size:clamp(18px,3.2vh,30px);letter-spacing:.35em;color:var(--ciano-forte);text-shadow:0 0 12px var(--cor)}
+.rotulo .estado{margin-top:8px;font-family:Orbitron;font-size:11px;letter-spacing:.35em;color:var(--cor);transition:color .5s}
+.rotulo .etapa{margin-top:6px;font-size:13px;color:var(--texto-fraco);min-height:18px}
+#confirmacao{margin-top:18px;max-width:520px;text-align:center;font-size:17px;color:var(--ambar);min-height:24px;text-shadow:0 0 8px rgba(255,181,71,.5)}
+.dica{margin-top:6px;font-size:13px;color:var(--texto-fraco);letter-spacing:.08em}
+/* sistemas */
+.relogio{font-family:Orbitron;font-size:40px;font-weight:600;color:var(--ciano-forte);text-shadow:0 0 14px var(--ciano)}
+.data{color:var(--texto-fraco);font-size:14px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:14px}
+.linha-sis{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px dashed rgba(53,230,255,.15);font-size:14px}
+.linha-sis small{color:var(--texto-fraco);font-size:12px}
+.led{width:9px;height:9px;border-radius:50%;background:var(--texto-fraco);display:inline-block;margin-left:8px;box-shadow:0 0 8px currentColor}
+.led.on{background:var(--verde);color:var(--verde)} .led.off{background:var(--vermelho);color:var(--vermelho)} .led.wait{background:var(--ambar);color:var(--ambar);animation:piscar 1s infinite}
+@keyframes piscar{50%{opacity:.3}}
+.modos{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0}
+button{font-family:Orbitron;font-size:10px;letter-spacing:.2em;color:var(--ciano);background:rgba(53,230,255,.06);border:1px solid var(--linha);
+  padding:10px 8px;cursor:pointer;transition:.2s;text-transform:uppercase}
+button:hover{background:rgba(53,230,255,.16);box-shadow:0 0 12px rgba(53,230,255,.35)}
+button.ativo{background:var(--ciano);color:#00151f;box-shadow:0 0 16px var(--ciano)}
+.rodape-sis{margin-top:auto;display:flex;gap:8px}
+.rodape-sis button{flex:1}
+#desligar{color:var(--vermelho);border-color:rgba(255,93,108,.45)}
+/* comando */
+.comando{grid-column:1/-1;display:flex;gap:12px;align-items:stretch}
+.comando .campo{flex:1;display:flex;align-items:center;border:1px solid var(--linha);background:rgba(2,14,24,.7);padding:0 14px;
+  clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px))}
+.comando .campo::before{content:"›";font-family:Orbitron;color:var(--ciano);margin-right:10px;font-size:18px}
+#entrada{flex:1;background:transparent;border:0;outline:0;color:var(--texto);font-family:Rajdhani;font-size:18px;padding:14px 0;user-select:text}
+#entrada::placeholder{color:var(--texto-fraco)}
+#falar{min-width:150px;font-size:11px}
+#falar.ouvindo{background:var(--ambar);color:#1a0d00;border-color:var(--ambar);box-shadow:0 0 18px var(--ambar)}
+/* estados */
+body[data-estado=ouvindo]{--cor:var(--ambar)}
+body[data-estado=pensando]{--cor:#ffd36b}
+body[data-estado=pesquisando]{--cor:var(--violeta)}
+body[data-estado=confirmar]{--cor:var(--ambar)}
+body[data-estado=falando]{--cor:var(--ciano-forte)}
+body[data-estado=erro]{--cor:var(--vermelho)}
+body[data-estado=carregando]{--cor:#4f9fb8}
+body[data-estado=pensando] .giro, body[data-estado=pesquisando] .giro{animation-duration:calc(var(--vel,30s) / 6)}
+body[data-estado=falando] #ondas{opacity:1}
+#ondas{opacity:0;transition:opacity .4s}
+#ondas circle{fill:none;stroke:var(--cor);animation:onda 1.6s ease-out infinite;transform-origin:50% 50%}
+#ondas circle:nth-child(2){animation-delay:.5s} #ondas circle:nth-child(3){animation-delay:1s}
+@keyframes onda{from{transform:scale(.55);opacity:.9}to{transform:scale(1.25);opacity:0}}
+@media (max-width:1000px){
+  .grade{grid-template-columns:1fr;grid-template-rows:auto auto minmax(160px,1fr) auto;gap:12px;padding:12px 16px}
+  header{font-size:10px;letter-spacing:.15em;gap:8px;flex-wrap:wrap}
+  .lateral:last-of-type{display:none}
+  .lateral:first-of-type{order:3}
+  .centro{order:2}
+  .comando{order:4}
+  .reator{width:min(70vw,38vh)}
+  #falar{min-width:96px}
+}
+@media (prefers-reduced-motion:reduce){.giro,body::after,#ondas circle{animation:none}}
+</style>
+</head>
+<body data-estado="carregando">
+<div class="grade">
+  <header>
+    <div><b>J.A.R.V.I.S.</b> &nbsp;·&nbsp; ASSISTENTE PESSOAL DO DR. ENRICO STUCCHI</div>
+    <div id="conexao">CONECTANDO…</div>
+  </header>
+
+  <section class="painel lateral">
+    <div class="titulo">REGISTRO <span id="contador">00</span></div>
+    <div id="registro"></div>
+  </section>
+
+  <section class="centro">
+    <div class="reator">
+      <svg viewBox="0 0 400 400" class="brilho" aria-hidden="true">
+        <g class="giro" style="--vel:90s"><circle class="anel" cx="200" cy="200" r="190" stroke-width="1" stroke-dasharray="2 8" opacity=".6"/></g>
+        <g class="giro inv" style="--vel:40s"><circle class="anel" cx="200" cy="200" r="172" stroke-width="6" stroke-dasharray="70 22 12 22" opacity=".55"/></g>
+        <g class="giro" style="--vel:25s"><circle class="anel" cx="200" cy="200" r="150" stroke-width="2" stroke-dasharray="180 40 30 40" opacity=".9"/></g>
+        <g class="giro inv" style="--vel:60s"><circle class="anel" cx="200" cy="200" r="132" stroke-width="10" stroke-dasharray="3 6" opacity=".35"/></g>
+        <g class="giro" style="--vel:14s"><circle class="anel" cx="200" cy="200" r="112" stroke-width="3" stroke-dasharray="40 30" opacity=".8"/></g>
+        <g class="giro inv" style="--vel:20s">
+          <path class="anel" d="M200 70 A130 130 0 0 1 330 200" stroke-width="2" opacity=".9"/>
+          <path class="anel" d="M200 330 A130 130 0 0 1 70 200" stroke-width="2" opacity=".9"/>
+        </g>
+        <circle class="anel" cx="200" cy="200" r="92" stroke-width="1" opacity=".5"/>
+        <g id="ondas"><circle cx="200" cy="200" r="120" stroke-width="2"/><circle cx="200" cy="200" r="120" stroke-width="2"/><circle cx="200" cy="200" r="120" stroke-width="2"/></g>
+        <circle id="nucleo" cx="200" cy="200" r="58" fill="rgba(53,230,255,.10)" stroke="var(--cor)" stroke-width="2"/>
+      </svg>
+      <div class="rotulo">
+        <div class="nome">JARVIS</div>
+        <div class="estado" id="estado">INICIANDO</div>
+        <div class="etapa" id="etapa"></div>
+      </div>
+    </div>
+    <div id="confirmacao"></div>
+    <div class="dica" id="dica">Diga "Olá, Jarvis" ou digite um comando abaixo.</div>
+  </section>
+
+  <section class="painel lateral">
+    <div class="titulo">SISTEMAS <span>ONLINE</span></div>
+    <div class="relogio" id="relogio">--:--</div>
+    <div class="data" id="data"></div>
+    <div class="linha-sis">Cérebro local <span><small id="modelo">—</small><i class="led wait" id="led-cerebro"></i></span></div>
+    <div class="linha-sis">Nuvem (Claude) <span><small id="nuvem-txt">—</small><i class="led" id="led-nuvem"></i></span></div>
+    <div class="linha-sis">Escuta "Olá, Jarvis" <span><i class="led wait" id="led-escuta"></i></span></div>
+    <div class="linha-sis">Microfone <span><small id="nivel-txt">—</small></span></div>
+    <div class="titulo" style="margin-top:16px">MODO</div>
+    <div class="modos" id="modos"></div>
+    <div class="rodape-sis">
+      <button id="voz">VOZ: LIGADA</button>
+      <button id="desligar">DESLIGAR</button>
+    </div>
+  </section>
+
+  <div class="comando">
+    <label class="campo"><input id="entrada" placeholder="Digite um comando, Doutor…" autocomplete="off"></label>
+    <button id="falar">● FALAR</button>
+  </div>
+</div>
+
+<script>
+const NOMES = {carregando:"CARREGANDO", espera:"EM ESPERA", chamado:"ÀS SUAS ORDENS", ouvindo:"OUVINDO", recebido:"PROCESSANDO",
+  pensando:"PROCESSANDO", pesquisando:"EM AÇÃO", confirmar:"AGUARDANDO CONFIRMAÇÃO", falando:"FALANDO", resposta:"RESPOSTA",
+  pronto:"EM ESPERA", erro:"ATENÇÃO"};
+const PERSONAS = {jarvis:"Geral", opme:"OPME", comunicacao:"Comunicação", estudo:"Estudo"};
+const $ = id => document.getElementById(id);
+let ws, vozLigada = true, persona = "jarvis", contagem = 0, ultimaResposta = "";
+
+function relogio(){
+  const d = new Date();
+  $("relogio").textContent = d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+  $("data").textContent = d.toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"long"});
+}
+setInterval(relogio, 1000); relogio();
+
+function registrar(quem, texto, classe){
+  const el = document.createElement("div");
+  el.className = "msg " + classe;
+  el.innerHTML = `<span class="quem">${quem}</span>`;
+  el.appendChild(document.createTextNode(texto));
+  $("registro").appendChild(el);
+  $("registro").scrollTop = $("registro").scrollHeight;
+  $("contador").textContent = String(++contagem).padStart(2, "0");
+}
+
+function mostrarEstado(e){
+  const visual = (e === "resposta" || e === "pronto") ? "espera" : e;
+  document.body.dataset.estado = visual;
+  $("estado").textContent = NOMES[e] || e.toUpperCase();
+  $("falar").classList.toggle("ouvindo", e === "ouvindo" || e === "confirmar");
+}
+
+function desenharModos(){
+  $("modos").innerHTML = "";
+  for (const [id, nome] of Object.entries(PERSONAS)){
+    const b = document.createElement("button");
+    b.textContent = nome; b.className = id === persona ? "ativo" : "";
+    b.onclick = () => enviar({tipo:"persona", nome:id});
+    $("modos").appendChild(b);
+  }
+}
+
+function tratar(ev){
+  if (ev.estado === "nivel"){
+    $("nucleo").setAttribute("r", 58 + ev.valor * 26);
+    $("nivel-txt").textContent = Math.round(ev.valor * 100) + "%";
+    return;
+  }
+  if (ev.inicial || ev.estado === "config"){
+    if (ev.persona){ persona = ev.persona; desenharModos(); }
+    if ("voz_ligada" in ev){ vozLigada = ev.voz_ligada; $("voz").textContent = "VOZ: " + (vozLigada ? "LIGADA" : "MUDA"); }
+    if ("nuvem" in ev) nuvem(ev.nuvem);
+    if (ev.modelo) $("modelo").textContent = ev.modelo;
+    if (ev.estado === "config") return;
+  }
+  const e = ev.estado;
+  mostrarEstado(e);
+  $("etapa").textContent = ev.etapa || (e === "espera" ? "" : $("etapa").textContent);
+  if (e !== "confirmar" && e !== "pesquisando") $("confirmacao").textContent = "";
+  if (e === "carregando"){ $("led-cerebro").className = "led wait"; }
+  if (e === "espera"){
+    $("led-cerebro").className = "led on"; $("led-escuta").className = "led on"; $("etapa").textContent = "";
+    if (ev.modelo) $("modelo").textContent = ev.modelo;
+    if ("nuvem" in ev) nuvem(ev.nuvem);
+  }
+  if (e === "recebido" && ev.voce) registrar("VOCÊ", ev.voce, "voce");
+  if (e === "resposta" && ev.texto){ ultimaResposta = ev.texto; registrar("JARVIS", ev.texto, "jarvis"); }
+  if (e === "confirmar" && ev.texto){ $("confirmacao").textContent = ev.texto + "  (responda por voz)"; registrar("CONFIRMAÇÃO", ev.texto, "sistema"); }
+  if (e === "falando" && ev.texto && ev.texto !== ultimaResposta && !/Confirma\?|confirmo\.$/.test(ev.texto)) registrar("JARVIS", ev.texto, "sistema");
+  if (e === "erro" && ev.texto) registrar("SISTEMA", ev.texto, "alerta");
+}
+
+function nuvem(ligada){
+  $("led-nuvem").className = "led " + (ligada ? "on" : "off");
+  $("nuvem-txt").textContent = ligada ? "pesquisa e ações" : "sem chave";
+}
+
+function enviar(obj){ if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj)); }
+
+function conectar(){
+  ws = new WebSocket(`ws://${location.host}/ws`);
+  ws.onopen = () => { $("conexao").textContent = "CONECTADO · LOCAL"; };
+  ws.onmessage = m => tratar(JSON.parse(m.data));
+  ws.onclose = () => { $("conexao").textContent = "RECONECTANDO…"; mostrarEstado("erro"); setTimeout(conectar, 1500); };
+}
+
+$("entrada").addEventListener("keydown", e => {
+  if (e.key === "Enter" && e.target.value.trim()){ enviar({tipo:"texto", texto:e.target.value.trim()}); e.target.value = ""; }
+});
+$("falar").onclick = () => enviar({tipo:"ouvir"});
+$("voz").onclick = () => enviar({tipo:"voz", ligada:!vozLigada});
+$("desligar").onclick = async () => {
+  if (!confirm("Desligar o Jarvis?")) return;
+  await fetch("/desligar", {method:"POST"}).catch(()=>{});
+  document.body.innerHTML = '<div style="display:grid;place-items:center;height:100vh;font-family:Orbitron;letter-spacing:.3em;color:#35e6ff">JARVIS DESLIGADO</div>';
+};
+desenharModos(); conectar();
+</script>
+</body>
+</html>

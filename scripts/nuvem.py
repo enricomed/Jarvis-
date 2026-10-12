@@ -74,7 +74,7 @@ def pesquisar(pergunta: str, falado: bool = False) -> str:
 
 SISTEMA_AGENTE = SISTEMA + (
     " Você também executa tarefas para o Doutor usando as ferramentas disponíveis: "
-    "ações no Mac (abrir programas, sites e arquivos, buscar arquivos, lembretes, eventos, "
+    "ações no Mac (abrir programas, sites e arquivos, buscar arquivos, ver a agenda, lembretes, eventos, "
     "notas, rascunhos de e-mail, volume) e tarefa_no_chrome para qualquer coisa que precise "
     "do navegador com os logins dele (TopSaúde, sistema da operadora, Outlook Web, sites). "
     "Escolha a ferramenta certa, use datas no formato AAAA-MM-DDTHH:MM a partir da data atual "

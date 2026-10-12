@@ -69,6 +69,7 @@ GATILHOS_ACAO = (
     "rascunho", "email", "mail", "mande", "envie", "arquivo", "pasta", "volume", "chrome",
     "navegador", "topsaude", "top saude", "outlook", "operadora", "sistema", "preench",
     "acesse", "acessa", "entre no", "entra no", "clique", "verifique no", "veja no", "planilha",
+    "agenda", "compromisso", "reuniao",
 )
 RESPOSTAS_SIM = ("sim", "confirmo", "pode", "ok", "isso", "claro", "manda", "faca", "autorizo", "positivo")
 # Se o cérebro local responder que não tem acesso à internet, refazemos na nuvem.
@@ -146,6 +147,7 @@ class Conversa:
         self.historico: list[tuple[str, str]] = []
         self.trava = threading.RLock()  # uma resposta por vez (voz e texto)
         self.aviso = lambda evento: None  # o app troca por uma função que atualiza a tela
+        self.confirmar_sempre_por_voz = False  # o app liga: confirmação por voz até em pedidos digitados
         self.host_ollama = getattr(getattr(config.engine, "ollama", None), "host", "") or "http://localhost:11434"
 
     def _avisar(self, estado: str, **dados) -> None:
@@ -186,6 +188,13 @@ class Conversa:
                 pass
         self.console.print(f"[dim]Pronto em {time.monotonic() - t:.0f} s.[/dim]")
         threading.Thread(target=self._manter_carregado, daemon=True).start()
+
+    def _ollama_no_ar(self) -> bool:
+        try:
+            urllib.request.urlopen(f"{self.host_ollama.rstrip('/')}/api/tags", timeout=3).read()
+            return True
+        except Exception:
+            return False
 
     def _manter_carregado(self) -> None:
         """Pede ao Ollama para manter o modelo na memória (evita recarregar a cada palma)."""
@@ -238,8 +247,12 @@ class Conversa:
                             resposta = self._pesquisar(fala, falado)
                 except Exception as erro:
                     self.console.print(f"[red]Erro ao gerar resposta: {erro}[/red]")
-                    self._avisar("erro", texto=str(erro))
-                    resposta = "Desculpe, Doutor, tive um problema para responder."
+                    if not pesquisa and not self._ollama_no_ar():
+                        resposta = ("O cérebro local não está respondendo, Doutor. "
+                                    "Reinicie o Ollama com: brew services restart ollama.")
+                    else:
+                        resposta = "Desculpe, Doutor, tive um problema para responder."
+                    self._avisar("erro", texto=str(erro)[:300])
             self.historico = (self.historico + [(fala, resposta)])[-TURNOS_DE_HISTORICO:]
             self.console.print(f"[bold cyan]Jarvis:[/bold cyan] {resposta}")
             self._avisar("resposta", texto=resposta)
@@ -317,6 +330,7 @@ class Conversa:
     def confirmar(self, descricao: str, falado: bool = True, envio: bool = False,
                   dupla: bool = False) -> bool:
         """Confirmação por voz. Envio de algo da MedSenior: duas confirmações, a segunda com "confirmo"."""
+        falado = falado or self.confirmar_sempre_por_voz
         pergunta = f"Posso {descricao}?" if envio else f"Vou {descricao}. Confirma?"
         self.console.print(f"[yellow]{pergunta}[/yellow]")
         self._avisar("confirmar", texto=pergunta)

@@ -96,6 +96,24 @@ def criar_evento(titulo: str, inicio: str, duracao_minutos: int = 60, agenda: st
     return f"Evento criado: {titulo} em {inicio}, {duracao_minutos} minutos."
 
 
+def ver_agenda(dia: str) -> str:
+    """Lista os eventos de um dia (AAAA-MM-DD) em todas as agendas. Só leitura."""
+    script = _data_as("ini", f"{dia}T00:00")
+    script += ("set fim to ini + (1 * days)\n"
+               "set saida to \"\"\n"
+               'tell application "Calendar"\n'
+               "  repeat with ag in calendars\n"
+               "    repeat with ev in (every event of ag whose start date ≥ ini and start date < fim)\n"
+               "      set h to time string of (start date of ev)\n"
+               "      set saida to saida & h & \" - \" & (summary of ev) & linefeed\n"
+               "    end repeat\n"
+               "  end repeat\n"
+               "end tell\n"
+               "return saida")
+    saida = _rodar(["osascript", "-e", script], timeout=60)
+    return ("Eventos de " + dia + ":\n" + saida) if saida else f"Nenhum evento em {dia}."
+
+
 def criar_nota(titulo: str, texto: str) -> str:
     corpo = f"<h1>{titulo}</h1><p>{texto}</p>".replace("\n", "<br>")
     _osascript(f'tell application "Notes" to make new note with properties {{name:{_texto_as(titulo)}, body:{_texto_as(corpo)}}}')
@@ -139,6 +157,8 @@ ACOES = {
     "criar_evento": (criar_evento, _f("criar_evento", "Cria um evento no app Calendário. 'inicio' no formato AAAA-MM-DDTHH:MM.",
                                      {"titulo": TXT, "inicio": TXT, "duracao_minutos": {"type": "integer"}},
                                      ["titulo", "inicio", "duracao_minutos"], True)),
+    "ver_agenda": (ver_agenda, _f("ver_agenda", "Lista os compromissos de um dia no app Calendário (só leitura). 'dia' no formato AAAA-MM-DD.",
+                                 {"dia": TXT}, ["dia"], False)),
     "criar_nota": (criar_nota, _f("criar_nota", "Cria uma nota no app Notas.", {"titulo": TXT, "texto": TXT},
                                  ["titulo", "texto"], True)),
     "rascunho_email": (rascunho_email, _f("rascunho_email", "Abre um rascunho de e-mail (não envia).",

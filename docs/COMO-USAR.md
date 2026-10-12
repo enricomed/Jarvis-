@@ -42,7 +42,30 @@ jarvis ask --persona estudo "Critérios atuais para desmame ventilatório em ido
    ```
 3. Pronto: nas conversas, o Jarvis busca trechos relevantes antes de responder. Para conferir o que ele acha: `uv run jarvis memory search "DUT artroplastia"`.
 
-## Modo show ("Olá, Jarvis" ou duas palmas)
+## O app do Jarvis (painel holográfico)
+
+**Criar o app (uma vez):**
+```bash
+git -C ~/jarvis pull && bash ~/jarvis/scripts/criar_app_mac.sh
+```
+Depois é só abrir pelo **Spotlight** (Cmd + Espaço → "Jarvis") ou pelo Launchpad. Para fixar no Dock: com ele aberto, botão direito no ícone → Opções → Manter no Dock.
+
+**O que tem na tela:**
+- **Centro:** o anel do Jarvis, que muda de cor conforme o que ele está fazendo: azul (em espera), âmbar (ouvindo ou aguardando sua confirmação), roxo (pesquisando ou agindo), ondas (falando). O núcleo pulsa com a sua voz.
+- **Esquerda, Registro:** tudo o que você falou e o que ele respondeu.
+- **Direita, Sistemas:** hora, status do cérebro local, da nuvem e da escuta, troca de **modo** (Geral, OPME, Comunicação, Estudo), voz ligada ou muda e **Desligar**.
+- **Embaixo:** campo para digitar um comando e o botão **Falar** (atalho para ele ouvir sem dizer "Olá, Jarvis").
+
+**Confirmações são sempre por voz**, mesmo para pedidos digitados (veja "Ações por voz").
+
+**Bom saber:**
+- Fechar a janela **não desliga** o Jarvis: ele continua ouvindo "Olá, Jarvis". Para desligar, use o botão **Desligar**.
+- A primeira abertura demora cerca de 1 minuto (carrega cérebro, ouvidos e voz). O anel mostra as etapas.
+- Na primeira vez, o Mac pergunta se o **Jarvis** pode usar o microfone: clique em **Permitir**.
+- Se o microfone não funcionar pelo app, rode `bash ~/jarvis/scripts/app.sh` no Terminal e abra http://127.0.0.1:8765 no Chrome.
+- O registro de funcionamento fica em `~/.openjarvis/app.log`.
+
+## Modo show no Terminal ("Olá, Jarvis" ou duas palmas)
 
 ```bash
 bash ~/jarvis/scripts/show.sh                     # ativação pela voz: "Olá, Jarvis" (padrão)
