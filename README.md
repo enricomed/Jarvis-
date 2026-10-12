@@ -52,6 +52,7 @@ jarvis chat --voice                            # conversa por voz
 jarvis chat --persona opme                     # modo OPME
 jarvis ask --persona comunicacao "E-mail aos cooperados avisando a nova rotina de OPME"
 bash scripts/show.sh                           # duas palmas (Windows: scripts\show.bat)
+bash scripts/pesquisa.sh "..."                 # pesquisa na internet (nuvem, depois de scripts/chave.sh)
 ```
 
 Mais exemplos em [docs/COMO-USAR.md](docs/COMO-USAR.md). Se algo travar: [docs/SE-TRAVAR.md](docs/SE-TRAVAR.md).

@@ -25,7 +25,7 @@ if [ -d "$OJ/.git" ]; then git -C "$OJ" pull --ff-only; else git clone https://g
 cd "$OJ"
 
 passo "3/8 Pacotes: ouvidos (faster-whisper), voz (Kokoro) e leitura de PDF"
-uv sync --extra desktop --extra voice --extra memory-pdf
+uv sync --extra desktop --extra voice --extra memory-pdf --extra inference-cloud --extra tools-search
 
 passo "3b/8 Peça de memória (Rust): necessária para a base de conhecimento"
 if ! command -v cargo >/dev/null && [ ! -x "$HOME/.cargo/bin/cargo" ]; then

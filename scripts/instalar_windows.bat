@@ -31,7 +31,7 @@ cd /d "%OJ%" || exit /b 1
 
 echo.
 echo ==^> 3/7 Pacotes: ouvidos, voz e leitura de PDF
-uv sync --extra desktop --extra voice --extra memory-pdf || exit /b 1
+uv sync --extra desktop --extra voice --extra memory-pdf --extra inference-cloud --extra tools-search || exit /b 1
 
 echo.
 echo ==^> 3b/7 Peca de memoria (Rust): necessaria para a base de conhecimento

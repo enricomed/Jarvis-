@@ -52,6 +52,11 @@ TURNOS_DE_HISTORICO = 6
 TOKENS_POR_RESPOSTA = 220  # resposta falada curta = gera e fala mais rápido
 MANTER_CARREGADO_A_CADA = 240  # s; o Ollama descarrega o modelo após 5 min parado
 
+# Só pedidos explícitos de pesquisa vão para a nuvem; todo o resto fica local.
+GATILHOS_PESQUISA = ("pesquis", "procur", "busqu", "busca ", "na internet", "na web",
+                     "noticia", "no google")
+MODELO_NUVEM = os.environ.get("JARVIS_MODELO_NUVEM", "claude-opus-5-5")
+
 
 def escolher_mic(valor: str | None) -> int | None:
     if not valor:
@@ -114,6 +119,9 @@ class Conversa:
         self.jarvis = Jarvis(config=config)
         self.voz = VoiceSession(config)
         self.modelo = config.intelligence.default_model or None
+        self.nuvem = None
+        if os.environ.get("ANTHROPIC_API_KEY"):
+            self.nuvem = Jarvis(config=config, engine_key="cloud", model=MODELO_NUVEM)
         self.host_ollama = getattr(getattr(config.engine, "ollama", None), "host", "") or "http://localhost:11434"
 
     def aquecer(self) -> None:
@@ -177,11 +185,19 @@ class Conversa:
                 self.falar("Até logo, Doutor.")
                 return
 
-            self.console.print("[dim]Pensando…[/dim]")
+            pesquisa = any(g in _normalizar(fala) for g in GATILHOS_PESQUISA)
+            if pesquisa and self.nuvem is None:
+                self.falar("Para pesquisar na internet, falta configurar a chave da nuvem, Doutor.")
+                continue
+            self.console.print("[dim]Pesquisando na internet…[/dim]" if pesquisa else "[dim]Pensando…[/dim]")
             t_pensar = time.monotonic()
             try:
-                resposta = self.jarvis.ask(self._montar_pergunta(historico, fala), agent="simple",
-                                           model=self.modelo, max_tokens=TOKENS_POR_RESPOSTA)
+                if pesquisa:
+                    resposta = self.nuvem.ask(self._montar_pergunta(historico, fala), agent="orchestrator",
+                                              tools=["web_search"], model=MODELO_NUVEM, max_tokens=1500)
+                else:
+                    resposta = self.jarvis.ask(self._montar_pergunta(historico, fala), agent="simple",
+                                               model=self.modelo, max_tokens=TOKENS_POR_RESPOSTA)
             except Exception as erro:
                 self.console.print(f"[red]Erro ao gerar resposta: {erro}[/red]")
                 self.falar("Desculpe, Doutor, tive um problema para responder.")

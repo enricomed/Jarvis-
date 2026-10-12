@@ -64,6 +64,24 @@ No Windows: `scripts\show.bat`, com `set JARVIS_CLAP_THRESH=0.35` antes para aju
 
 Jingle de abertura: coloque `jingle.mp3` (ou `.wav`) na pasta `voz/`.
 
+## Pesquisa na internet (cérebro na nuvem)
+
+O Jarvis usa o Claude, na nuvem, **só quando você pede uma pesquisa**. Todo o resto continua local.
+
+**Ligar (uma vez):**
+1. Crie uma chave em **console.anthropic.com → API Keys → Create Key** (precisa de crédito na conta).
+2. No Terminal: `bash ~/jarvis/scripts/chave.sh` e cole a chave quando ele pedir. Nada aparece na tela enquanto você cola, e isso é normal.
+
+**Usar:**
+- Por texto: `bash ~/jarvis/scripts/pesquisa.sh "últimas resoluções da ANS sobre OPME"`
+- Por voz (modo palmas): comece a frase com **"pesquise…"**, "procure…" ou "busque na internet…". Ele avisa "Pesquisando na internet…".
+
+**Regras:**
+- Não use pesquisa com nome ou dados de paciente: a pergunta sai do computador.
+- Modelo padrão: Claude Opus 5.5 (o mais capaz para pesquisa). Para mudar, defina `JARVIS_MODELO_NUVEM` antes do comando, por exemplo `JARVIS_MODELO_NUVEM=claude-sonnet-5-5`.
+
+**Ações em sistemas (TopSaúde, sistema da operadora, Outlook Web):** use a extensão oficial **Claude no Chrome**, não o Jarvis. Antes, confirme a liberação com a TI/DPO da MedSenior.
+
 ## Interface web
 
 ```bash
