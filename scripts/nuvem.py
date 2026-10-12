@@ -210,7 +210,8 @@ def agente(pedido: str, confirmar: Callable[[str], bool], falado: bool = False,
             messages=mensagens,
             tools=ferramentas,
             betas=["server-side-fallback-2026-07-01"],
-            extra_body={"fallbacks": "default", "output_config": {"effort": "medium"}},
+            # Na voz, rapidez importa mais: esforço baixo.
+            extra_body={"fallbacks": "default", "output_config": {"effort": "low" if falado else "medium"}},
         )
         if resposta.stop_reason == "pause_turn":
             mensagens.append({"role": "assistant", "content": resposta.content})
