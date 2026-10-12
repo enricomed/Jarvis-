@@ -171,8 +171,15 @@ def calibrar(mic: int | None) -> None:
     meio = len(picos) // 2
     silencio = max(picos[:meio], default=0.0)
     palma = max(picos[meio:], default=0.0)
-    sugestao = round((silencio + palma) / 2, 2)
     print(f"Ruído ambiente: {silencio:.2f} | palma: {palma:.2f}")
+    if palma < 0.05 or palma < 3 * silencio:
+        print("O microfone quase não captou as palmas. Confira:")
+        print("  1. Permissão: Ajustes do Sistema > Privacidade e Segurança > Microfone > ligue o Terminal")
+        print("     (depois feche e abra o Terminal).")
+        print("  2. Microfone certo: rode com --listar-mics e use JARVIS_MIC=<número>.")
+        print("  3. Bata as palmas depois dos 3 primeiros segundos, perto do computador.")
+        return
+    sugestao = round(max(0.05, silencio + (palma - silencio) * 0.4), 2)
     print(f"Sugestão: JARVIS_CLAP_THRESH={sugestao}")
 
 
