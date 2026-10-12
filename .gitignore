@@ -1,0 +1,19 @@
+# OpenJarvis baixado na instalação
+openjarvis/
+
+# Documentos pessoais e internos
+conhecimento/*
+!conhecimento/README.md
+
+# Áudios pessoais
+voz/*
+!voz/README.md
+
+# Segredos
+.env
+*.env
+
+# Sistema
+.DS_Store
+Thumbs.db
+__pycache__/
