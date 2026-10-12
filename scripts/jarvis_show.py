@@ -133,19 +133,42 @@ class Conversa:
         self.voz = VoiceSession(config)
         self.modelo = config.intelligence.default_model or None
         self.nuvem = bool(os.environ.get("ANTHROPIC_API_KEY"))
+        self.persona = persona
+        self._config = config
+        self.historico: list[tuple[str, str]] = []
+        self.trava = threading.RLock()  # uma resposta por vez (voz e texto)
+        self.aviso = lambda evento: None  # o app troca por uma função que atualiza a tela
         self.host_ollama = getattr(getattr(config.engine, "ollama", None), "host", "") or "http://localhost:11434"
+
+    def _avisar(self, estado: str, **dados) -> None:
+        try:
+            self.aviso({"estado": estado, **dados})
+        except Exception:
+            pass
+
+    def trocar_persona(self, persona: str) -> None:
+        from openjarvis import Jarvis
+
+        with self.trava:
+            self._config.memory_files = dataclasses.replace(self._config.memory_files, persona_name=persona)
+            self.jarvis = Jarvis(config=self._config)
+            self.persona = persona
+            self.historico = []
 
     def aquecer(self) -> None:
         """Carrega cérebro, ouvidos e voz antes da primeira palma."""
         t = time.monotonic()
         self.console.print("[dim]1/3 Carregando o cérebro (pode levar até 1 minuto)…[/dim]")
+        self._avisar("carregando", etapa="Carregando o cérebro")
         try:
             self.jarvis.ask("Responda só: ok", agent="simple", model=self.modelo, max_tokens=5)
         except Exception as erro:
             self.console.print(f"[yellow]Aviso: o cérebro não respondeu no aquecimento ({erro}).[/yellow]")
         self.console.print("[dim]2/3 Carregando os ouvidos…[/dim]")
+        self._avisar("carregando", etapa="Carregando os ouvidos")
         self.voz.get_stt_backend()
         self.console.print("[dim]3/3 Carregando a voz…[/dim]")
+        self._avisar("carregando", etapa="Carregando a voz")
         tts = self.voz.get_tts_backend()
         if tts is not None:
             try:
@@ -182,12 +205,42 @@ class Conversa:
     def falar(self, texto: str) -> None:
         from openjarvis.cli._voice_chat import speak
 
+        self._avisar("falando", texto=texto)
         speak(_para_fala(texto), self.console, self.voz)
+        self._avisar("pronto")
+
+    def responder(self, fala: str, falado: bool = True) -> str:
+        """Responde a um pedido (dito ou digitado). Pesquisa na nuvem quando precisa."""
+        with self.trava:
+            self._avisar("recebido", voce=fala)
+            pesquisa = any(g in _normalizar(fala) for g in GATILHOS_PESQUISA)
+            if pesquisa and not self.nuvem:
+                resposta = "Para pesquisar na internet, falta configurar a chave da nuvem, Doutor."
+            else:
+                try:
+                    if pesquisa:
+                        resposta = self._pesquisar(fala, falado)
+                    else:
+                        self.console.print("[dim]Pensando…[/dim]")
+                        self._avisar("pensando")
+                        resposta = self.jarvis.ask(
+                            self._montar_pergunta(self.historico, fala, falado), agent="simple",
+                            model=self.modelo, max_tokens=TOKENS_POR_RESPOSTA if falado else 1500)
+                        if self.nuvem and any(x in _normalizar(resposta) for x in SINAIS_SEM_INTERNET):
+                            resposta = self._pesquisar(fala, falado)
+                except Exception as erro:
+                    self.console.print(f"[red]Erro ao gerar resposta: {erro}[/red]")
+                    self._avisar("erro", texto=str(erro))
+                    resposta = "Desculpe, Doutor, tive um problema para responder."
+            self.historico = (self.historico + [(fala, resposta)])[-TURNOS_DE_HISTORICO:]
+            self.console.print(f"[bold cyan]Jarvis:[/bold cyan] {resposta}")
+            self._avisar("resposta", texto=resposta)
+            return resposta
 
     def rodar(self, primeira_fala: str | None = None) -> None:
+        """Conversa por voz até o Doutor encerrar ou ficar em silêncio."""
         from openjarvis.cli._voice_chat import VOICE_EXIT, record_voice
 
-        historico: list[tuple[str, str]] = []
         silencios = 0
         if not primeira_fala:
             self.falar("Pois não, Doutor?")
@@ -197,55 +250,43 @@ class Conversa:
                 fala, primeira_fala = primeira_fala, None
                 self.console.print(f"[bold]Você:[/bold] {fala}")
             else:
+                self._avisar("ouvindo")
                 fala = record_voice(self.console, self.voz)
             if isinstance(fala, str) and fala:
                 self.console.print(f"[dim](ouvir + transcrever {time.monotonic() - t_ouvir:.1f} s)[/dim]")
             if fala is VOICE_EXIT:
-                return
+                break
             if not fala:
                 silencios += 1
                 if silencios >= SILENCIOS_PARA_SAIR:
                     self.falar("Estarei por aqui, Doutor.")
-                    return
+                    break
                 continue
             silencios = 0
             if any(f in _normalizar(fala) for f in FRASES_SAIDA):
+                self._avisar("recebido", voce=fala)
                 self.falar("Até logo, Doutor.")
-                return
+                break
 
-            pesquisa = any(g in _normalizar(fala) for g in GATILHOS_PESQUISA)
-            if pesquisa and not self.nuvem:
-                self.falar("Para pesquisar na internet, falta configurar a chave da nuvem, Doutor.")
-                continue
             t_pensar = time.monotonic()
-            try:
-                if pesquisa:
-                    resposta = self._pesquisar(historico, fala)
-                else:
-                    self.console.print("[dim]Pensando…[/dim]")
-                    resposta = self.jarvis.ask(self._montar_pergunta(historico, fala), agent="simple",
-                                               model=self.modelo, max_tokens=TOKENS_POR_RESPOSTA)
-                    if self.nuvem and any(x in _normalizar(resposta) for x in SINAIS_SEM_INTERNET):
-                        resposta = self._pesquisar(historico, fala)
-            except Exception as erro:
-                self.console.print(f"[red]Erro ao gerar resposta: {erro}[/red]")
-                self.falar("Desculpe, Doutor, tive um problema para responder.")
-                continue
+            resposta = self.responder(fala, falado=True)
             t_falar = time.monotonic()
-            self.console.print(f"[bold cyan]Jarvis:[/bold cyan] {resposta}")
             self.falar(resposta)
             self.console.print(f"[dim](pensar {t_falar - t_pensar:.1f} s · falar {time.monotonic() - t_falar:.1f} s)[/dim]")
-            historico = (historico + [(fala, resposta)])[-TURNOS_DE_HISTORICO:]
+        self._avisar("espera")
 
-    def _pesquisar(self, historico: list[tuple[str, str]], fala: str) -> str:
+    def _pesquisar(self, fala: str, falado: bool = True) -> str:
         from nuvem import pesquisar
 
         self.console.print("[dim]Pesquisando na internet…[/dim]")
-        self.falar("Um momento, vou pesquisar.")
-        return pesquisar(self._montar_pergunta(historico, fala), falado=True)
+        self._avisar("pesquisando")
+        if falado:
+            self.falar("Um momento, vou pesquisar.")
+            self._avisar("pesquisando")
+        return pesquisar(self._montar_pergunta(self.historico, fala, falado), falado=falado)
 
     @staticmethod
-    def _montar_pergunta(historico: list[tuple[str, str]], fala: str) -> str:
+    def _montar_pergunta(historico: list[tuple[str, str]], fala: str, falado: bool = True) -> str:
         partes = []
         if historico:
             partes.append("Conversa até agora:")
@@ -253,7 +294,8 @@ class Conversa:
                 partes.append(f"Doutor: {doutor}\nJarvis: {jarvis}")
             partes.append("")
         partes.append(f"Fala do Doutor agora: {fala}")
-        partes.append("(Conversa por voz: responda curto, em frases faladas, sem listas nem markdown.)")
+        if falado:
+            partes.append("(Conversa por voz: responda curto, em frases faladas, sem listas nem markdown.)")
         return "\n".join(partes)
 
 
@@ -343,6 +385,8 @@ class AtivadorPorVoz:
         self.modelo = WhisperModel(os.environ.get("JARVIS_WAKE_MODEL", "base"),
                                    device="cpu", compute_type="int8")
         self.ruido = 0.005
+        self.nivel = lambda rms: None  # o app usa para animar o painel
+        self.chamar_agora = threading.Event()  # botão "Falar" do app
 
     def _transcrever(self, audio: np.ndarray) -> str:
         kwargs = dict(language="pt", beam_size=1, condition_on_previous_text=False, vad_filter=False)
@@ -362,9 +406,13 @@ class AtivadorPorVoz:
         with sd.InputStream(samplerate=self.TAXA, blocksize=self.BLOCO, channels=1,
                             dtype="float32", device=self.mic) as fluxo:
             while True:
+                if self.chamar_agora.is_set():
+                    self.chamar_agora.clear()
+                    return ""
                 bloco, _ = fluxo.read(self.BLOCO)
                 bloco = bloco[:, 0].copy()
                 rms = float(np.sqrt(np.mean(bloco ** 2)))
+                self.nivel(rms)
                 tem_voz = rms > max(0.01, 3.5 * self.ruido)
                 if not trecho:
                     if tem_voz:
