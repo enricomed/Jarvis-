@@ -63,6 +63,14 @@ GATILHOS_PESQUISA = (
     "cotacao", "dolar", "euro", "bolsa", "previsao do tempo", "clima", "temperatura",
     "quem ganhou", "resultado", "placar", "preco", "quanto custa", "endereco", "horario",
 )
+# Pedidos de ação (no Mac ou no Chrome) também vão para o agente na nuvem.
+GATILHOS_ACAO = (
+    "abr", "crie", "criar", "cria ", "agend", "marque", "marca ", "lembr", "anot", "nota",
+    "rascunho", "email", "mail", "mande", "envie", "arquivo", "pasta", "volume", "chrome",
+    "navegador", "topsaude", "top saude", "outlook", "operadora", "sistema", "preench",
+    "acesse", "acessa", "entre no", "entra no", "clique", "verifique no", "veja no", "planilha",
+)
+RESPOSTAS_SIM = ("sim", "confirmo", "pode", "ok", "isso", "claro", "manda", "faca", "autorizo", "positivo")
 # Se o cérebro local responder que não tem acesso à internet, refazemos na nuvem.
 SINAIS_SEM_INTERNET = (
     "nao tenho acesso", "nao consigo acessar", "tempo real", "informacoes atualizadas",
@@ -213,9 +221,9 @@ class Conversa:
         """Responde a um pedido (dito ou digitado). Pesquisa na nuvem quando precisa."""
         with self.trava:
             self._avisar("recebido", voce=fala)
-            pesquisa = any(g in _normalizar(fala) for g in GATILHOS_PESQUISA)
+            pesquisa = any(g in _normalizar(fala) for g in GATILHOS_PESQUISA + GATILHOS_ACAO)
             if pesquisa and not self.nuvem:
-                resposta = "Para pesquisar na internet, falta configurar a chave da nuvem, Doutor."
+                resposta = "Para pesquisar ou executar tarefas, falta configurar a chave da nuvem, Doutor."
             else:
                 try:
                     if pesquisa:
@@ -276,14 +284,59 @@ class Conversa:
         self._avisar("espera")
 
     def _pesquisar(self, fala: str, falado: bool = True) -> str:
-        from nuvem import pesquisar
+        """Agente na nuvem: pesquisa, age no Mac ou no Chrome, sempre com confirmação por voz."""
+        from nuvem import agente
 
-        self.console.print("[dim]Pesquisando na internet…[/dim]")
+        self.console.print("[dim]Trabalhando na nuvem…[/dim]")
         self._avisar("pesquisando")
         if falado:
-            self.falar("Um momento, vou pesquisar.")
+            self.falar("Um momento, Doutor.")
             self._avisar("pesquisando")
-        return pesquisar(self._montar_pergunta(self.historico, fala, falado), falado=falado)
+        nomes = {"web_search": "Pesquisando na internet", "tarefa_no_chrome": "Trabalhando no Chrome"}
+
+        def avisar(ferramenta: str) -> None:
+            self._avisar("pesquisando", etapa=nomes.get(ferramenta, "Executando no Mac"))
+
+        def confirmar(descricao: str, envio: bool = False, dupla: bool = False) -> bool:
+            return self.confirmar(descricao, falado, envio=envio, dupla=dupla)
+
+        return agente(self._montar_pergunta(self.historico, fala, falado),
+                      confirmar=confirmar, falado=falado, avisar=avisar)
+
+    def _ouvir_resposta(self, falado: bool) -> str:
+        if not falado:
+            return input("> ").strip()
+        from openjarvis.cli._voice_chat import record_voice
+
+        for _ in range(2):  # uma segunda chance se não ouviu nada
+            resposta = record_voice(self.console, self.voz)
+            if isinstance(resposta, str) and resposta.strip():
+                return resposta
+        return ""
+
+    def confirmar(self, descricao: str, falado: bool = True, envio: bool = False,
+                  dupla: bool = False) -> bool:
+        """Confirmação por voz. Envio de algo da MedSenior: duas confirmações, a segunda com "confirmo"."""
+        pergunta = f"Posso {descricao}?" if envio else f"Vou {descricao}. Confirma?"
+        self.console.print(f"[yellow]{pergunta}[/yellow]")
+        self._avisar("confirmar", texto=pergunta)
+        if falado:
+            self.falar(pergunta)
+            self._avisar("confirmar", texto=pergunta)
+        palavras = _normalizar(self._ouvir_resposta(falado)).split()
+        ok = any(p in RESPOSTAS_SIM for p in palavras) and "nao" not in palavras
+        if ok and dupla:
+            segunda = "Isso envolve a MedSenior. Para enviar, diga: confirmo."
+            self.console.print(f"[yellow]{segunda}[/yellow]")
+            self._avisar("confirmar", texto=segunda)
+            if falado:
+                self.falar(segunda)
+            palavras = _normalizar(self._ouvir_resposta(falado)).split()
+            ok = "confirmo" in palavras and "nao" not in palavras
+        if not ok and falado:
+            self.falar("Certo, não vou fazer.")
+        self._avisar("pesquisando", etapa="Executando" if ok else "Cancelado")
+        return ok
 
     @staticmethod
     def _montar_pergunta(historico: list[tuple[str, str]], fala: str, falado: bool = True) -> str:

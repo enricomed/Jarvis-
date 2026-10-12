@@ -85,11 +85,24 @@ SISTEMA_AGENTE = SISTEMA + (
 REGRAS_CHROME = (
     "Você está agindo no Chrome do Dr. Enrico Stucchi, a pedido dele, pelo assistente Jarvis. "
     "Regras obrigatórias: 1) Não envie, confirme, autorize, assine, pague, exclua nem finalize "
-    "nada; prepare tudo e pare antes do clique final, dizendo o que falta ele confirmar. "
+    "nada nesta etapa; prepare tudo e pare antes do clique final. "
     "2) Não digite senhas; se aparecer login ou CAPTCHA, pare e avise. 3) Dados de pacientes: "
-    "não copie para fora do sistema onde estão. 4) Ao terminar, responda em português, em até "
-    "quatro frases, o que fez e o que ficou para ele. Tarefa: "
+    "não copie para fora do sistema onde estão. 4) Responda em português, em até quatro frases, "
+    "o que fez. 5) A ÚLTIMA linha da resposta deve ser exatamente uma destas: "
+    "'PENDENTE: <o que será enviado/confirmado, com os dados principais>' se faltar o clique final, "
+    "ou 'CONCLUIDO' se não houver nada a enviar. Tarefa: "
 )
+
+REGRAS_ENVIO = (
+    "O Dr. Enrico conferiu e autorizou por voz, com dupla confirmação, o envio do que você "
+    "preparou: {pendente}. Na mesma aba, execute agora somente esse clique final. Não altere "
+    "nenhum dado. Se a tela não estiver como você deixou, não envie e explique. Responda em "
+    "uma ou duas frases, em português, o que aconteceu."
+)
+
+# Termos que indicam sistemas e dados da MedSenior: pedem dupla confirmação no envio.
+TERMOS_MEDSENIOR = ("medsenior", "med senior", "topsaude", "top saude", "operadora", "beneficiari",
+                    "opme", "autorizac", "guia", "cooperad", "prestador", "auditoria", "junta medica")
 
 DEF_CHROME = {
     "name": "tarefa_no_chrome",
@@ -108,32 +121,70 @@ def _achar_claude_code() -> str | None:
                           Path("/opt/homebrew/bin/claude"), Path("/usr/local/bin/claude")) if p.exists()), None)
 
 
-def tarefa_no_chrome(tarefa: str, timeout: int = 900) -> str:
-    """Executa a tarefa no Chrome pelo Claude Code (claude -p --chrome)."""
+def eh_medsenior(texto: str) -> bool:
+    import unicodedata
+
+    t = unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode().lower()
+    return any(termo in t for termo in TERMOS_MEDSENIOR)
+
+
+def _rodar_claude_code(prompt: str, sessao: str | None, timeout: int) -> tuple[str, str | None, str]:
+    """Roda `claude -p --chrome` e devolve (texto, id da sessão, erro)."""
+    import json
+
     claude = _achar_claude_code()
     if not claude:
-        return "O Claude Code não está instalado neste Mac. Veja docs/COMO-USAR.md, seção Chrome."
+        return "", None, "O Claude Code não está instalado neste Mac. Veja docs/COMO-USAR.md, seção Chrome."
     # Com chave de API no ambiente, o Claude Code desliga a integração com o Chrome:
     # ele precisa usar o login da conta Claude do Doutor.
     env = {k: v for k, v in os.environ.items() if k not in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")}
-    cmd = [claude, "-p", REGRAS_CHROME + tarefa, "--chrome", "--output-format", "text",
+    cmd = [claude, "-p", prompt, "--chrome", "--output-format", "json",
            "--allowedTools", "mcp__claude-in-chrome"]
+    if sessao:
+        cmd += ["--resume", sessao]
     try:
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, env=env)
     except subprocess.TimeoutExpired:
-        return "A tarefa no Chrome demorou demais e foi interrompida."
-    saida = (r.stdout or "").strip()
-    if r.returncode != 0 or not saida:
-        erro = (r.stderr or r.stdout or "").strip()[-400:]
-        return f"O Claude no Chrome não conseguiu concluir. Detalhe: {erro or 'sem resposta'}"
-    return saida
+        return "", None, "A tarefa no Chrome demorou demais e foi interrompida."
+    try:
+        dados = json.loads(r.stdout)
+    except (json.JSONDecodeError, TypeError):
+        dados = {}
+    texto = str(dados.get("result") or "").strip()
+    if r.returncode != 0 or not texto or dados.get("is_error"):
+        detalhe = (texto or r.stderr or r.stdout or "sem resposta").strip()[-400:]
+        return "", None, f"O Claude no Chrome não conseguiu concluir. Detalhe: {detalhe}"
+    return texto, dados.get("session_id"), ""
 
 
-def _executar_ferramenta(nome: str, args: dict, confirmar: Callable[[str], bool]) -> str:
+def tarefa_no_chrome(tarefa: str, confirmar_envio: Callable[[str, bool], bool],
+                     timeout: int = 900) -> str:
+    """Duas fases: prepara sem finalizar; o clique final só depois da confirmação do Doutor."""
+    texto, sessao, erro = _rodar_claude_code(REGRAS_CHROME + tarefa, None, timeout)
+    if erro:
+        return erro
+    linhas = texto.splitlines()
+    ultima = linhas[-1].strip() if linhas else ""
+    relato = "\n".join(linhas[:-1]).strip() or texto
+    if not ultima.upper().startswith("PENDENTE"):
+        return relato
+    pendente = ultima.split(":", 1)[-1].strip()
+    dupla = eh_medsenior(tarefa + " " + pendente)
+    if not confirmar_envio(pendente, dupla):
+        return relato + "\nO Doutor não autorizou o envio. Ficou preparado, sem enviar."
+    if not sessao:
+        return relato + "\nNão consegui retomar a sessão para enviar; ficou preparado na tela."
+    final, _, erro = _rodar_claude_code(REGRAS_ENVIO.format(pendente=pendente), sessao, timeout)
+    return erro or final
+
+
+def _executar_ferramenta(nome: str, args: dict, confirmar: Callable[..., bool]) -> str:
     if nome == "tarefa_no_chrome":
         if not confirmar(f"pedir ao Claude no Chrome: {args.get('tarefa', '')}"):
             return "O Doutor não autorizou esta tarefa. Não foi feita."
-        return tarefa_no_chrome(args.get("tarefa", ""))
+        return tarefa_no_chrome(
+            args.get("tarefa", ""),
+            confirmar_envio=lambda pendente, dupla: confirmar(f"enviar: {pendente}", envio=True, dupla=dupla))
     import acoes_mac
 
     return acoes_mac.executar(nome, args, confirmar)
@@ -191,8 +242,11 @@ def main() -> int:
         return 1
     args = sys.argv[1:]
     if args[0] == "--agente":
-        def confirmar(descricao: str) -> bool:
-            return input(f"Vou {descricao}. Confirma? [s/n] ").strip().lower().startswith("s")
+        def confirmar(descricao: str, envio: bool = False, dupla: bool = False) -> bool:
+            ok = input(f"Vou {descricao}. Confirma? [s/n] ").strip().lower().startswith("s")
+            if ok and dupla:
+                ok = input("Envolve a MedSenior. Digite 'confirmo' para enviar: ").strip().lower() == "confirmo"
+            return ok
         print(agente(" ".join(args[1:]), confirmar))
     elif args[0] == "--chrome":
         print(tarefa_no_chrome(" ".join(args[1:])))

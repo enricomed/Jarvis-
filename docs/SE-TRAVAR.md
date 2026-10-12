@@ -12,6 +12,9 @@ Antes de tudo: `cd openjarvis && uv run jarvis doctor`. Ele diz exatamente o que
 | Pesquisa diz "Falta a chave" ou "falta configurar a chave da nuvem" | Rode `bash ~/jarvis/scripts/chave.sh` e depois reinicie o modo palmas |
 | Pesquisa dá erro com "credit balance" | Falta crédito: console.anthropic.com → Billing |
 | Pesquisa dá erro com "authentication" ou "invalid x-api-key" | Chave errada ou apagada: crie outra no console e rode `bash ~/jarvis/scripts/chave.sh` |
+| Chrome: "Claude Code não está instalado" | Rode `curl -fsSL https://claude.ai/install.sh \| bash`, depois `claude` → login → `/chrome` |
+| Chrome: "não conseguiu concluir" | Deixe o Chrome aberto, confira se a extensão está conectada (`claude` → `/chrome`) e se o login no Claude Code é com a sua conta (não chave de API) |
+| Ele não entende o "confirmo" | Fale só a palavra "confirmo", devagar. Qualquer outra resposta cancela o envio (por segurança) |
 | Ollama não responde | Mac: `brew services start ollama`. Windows: abra o app Ollama (ícone ao lado do relógio). Ou rode `ollama serve` |
 | Voz ou microfone mudos | Dê permissão de microfone ao Terminal. Mac: Ajustes → Privacidade e Segurança → Microfone. Windows: Configurações → Privacidade → Microfone |
 | **Mac:** Kokoro não acha o espeak | `export PHONEMIZER_ESPEAK_LIBRARY=$(brew --prefix)/lib/libespeak-ng.dylib` e `export ESPEAK_DATA_PATH=$(brew --prefix)/share/espeak-ng-data` |

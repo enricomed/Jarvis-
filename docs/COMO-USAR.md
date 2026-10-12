@@ -85,7 +85,27 @@ O Jarvis usa o Claude, na nuvem, **só quando você pede uma pesquisa**. Todo o 
 - Não use pesquisa com nome ou dados de paciente: a pergunta sai do computador.
 - Modelo padrão: Claude Opus 5.5 (o mais capaz para pesquisa). Para mudar, defina `JARVIS_MODELO_NUVEM` antes do comando, por exemplo `JARVIS_MODELO_NUVEM=claude-sonnet-5-5`.
 
-**Ações em sistemas (TopSaúde, sistema da operadora, Outlook Web):** use a extensão oficial **Claude no Chrome**, não o Jarvis. Antes, confirme a liberação com a TI/DPO da MedSenior.
+## Ações por voz (no Mac e no Chrome)
+
+Peça normalmente: *"Olá, Jarvis, crie um lembrete para amanhã às 9h: revisar OPME"*, *"abra o Outlook"*, *"entre no TopSaúde e veja os pedidos de OPME pendentes"*.
+
+**Como ele confirma (tudo por voz):**
+1. Antes de começar, ele diz o que vai fazer e pergunta **"Confirma?"**. Responda "sim" ou "não".
+2. No Chrome, ele **prepara tudo e para antes do clique final**.
+3. Para enviar, ele lê o que será enviado e pergunta **"Posso enviar?"**.
+4. **Se envolver a MedSenior** (TopSaúde, operadora, OPME, guias, beneficiários, cooperados), ele pergunta de novo e **só envia se você disser "confirmo"**.
+
+**O que ele faz no Mac:** abrir programas, sites e arquivos, buscar arquivos, criar lembretes, eventos e notas, abrir rascunho de e-mail (não envia) e ajustar volume. Não tem acesso livre ao Terminal.
+
+**Preparar o Chrome (uma vez):**
+1. Instale a extensão **Claude** (publicada pela Anthropic) na Chrome Web Store e entre com a sua conta Claude.
+2. Instale o Claude Code no Mac: `curl -fsSL https://claude.ai/install.sh | bash`
+3. Abra o Terminal, digite `claude`, faça login **com a sua conta Claude** (não com chave de API) e digite `/chrome` → ative **"Enabled by default"**.
+4. Teste: `cd ~/jarvis/openjarvis && uv run python ../scripts/nuvem.py --chrome "Abra o site da ANS e diga o título da página"`
+
+Na primeira vez que ele mexer em Lembretes, Calendário ou Notas, o Mac pergunta se o Terminal pode controlar esses apps: clique em **OK**.
+
+**Antes de usar nos sistemas da MedSenior:** confirme a liberação com a TI e o DPO.
 
 ## Interface web
 
