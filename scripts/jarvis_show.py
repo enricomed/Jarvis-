@@ -127,11 +127,14 @@ class Conversa:
     def aquecer(self) -> None:
         """Carrega cérebro, ouvidos e voz antes da primeira palma."""
         t = time.monotonic()
+        self.console.print("[dim]1/3 Carregando o cérebro (pode levar até 1 minuto)…[/dim]")
         try:
             self.jarvis.ask("Responda só: ok", agent="simple", model=self.modelo, max_tokens=5)
         except Exception as erro:
             self.console.print(f"[yellow]Aviso: o cérebro não respondeu no aquecimento ({erro}).[/yellow]")
+        self.console.print("[dim]2/3 Carregando os ouvidos…[/dim]")
         self.voz.get_stt_backend()
+        self.console.print("[dim]3/3 Carregando a voz…[/dim]")
         tts = self.voz.get_tts_backend()
         if tts is not None:
             try:
@@ -146,15 +149,24 @@ class Conversa:
         """Pede ao Ollama para manter o modelo na memória (evita recarregar a cada palma)."""
         if not self.modelo:
             return
-        corpo = json.dumps({"model": self.modelo, "keep_alive": "30m"}).encode()
+        # Mesmo num_ctx que o OpenJarvis usa nas perguntas: se for diferente,
+        # o Ollama recarrega o modelo inteiro a cada pedido.
+        try:
+            from openjarvis.engine.ollama import _default_num_ctx
+            num_ctx = _default_num_ctx()
+        except Exception:
+            num_ctx = int(os.environ.get("JARVIS_NUM_CTX", "16384"))
+        corpo = json.dumps({"model": self.modelo, "keep_alive": "30m",
+                            "options": {"num_ctx": num_ctx}}).encode()
         while True:
+            # O aquecimento já carregou o modelo; o primeiro sinal vem depois do intervalo.
+            time.sleep(MANTER_CARREGADO_A_CADA)
             try:
                 req = urllib.request.Request(f"{self.host_ollama.rstrip('/')}/api/generate", data=corpo,
                                              headers={"Content-Type": "application/json"})
                 urllib.request.urlopen(req, timeout=60).read()
             except Exception:
                 pass
-            time.sleep(MANTER_CARREGADO_A_CADA)
 
     def falar(self, texto: str) -> None:
         from openjarvis.cli._voice_chat import speak
