@@ -61,8 +61,8 @@ Depois é só abrir pelo **Spotlight** (Cmd + Espaço → "Jarvis") ou pelo Laun
 **Bom saber:**
 - Fechar a janela **não desliga** o Jarvis: ele continua ouvindo "Olá, Jarvis". Para desligar, use o botão **Desligar**.
 - A primeira abertura demora cerca de 1 minuto (carrega cérebro, ouvidos e voz). O anel mostra as etapas.
-- Na primeira vez, o Mac pergunta se o **Jarvis** pode usar o microfone: clique em **Permitir**.
-- Se o microfone não funcionar pelo app, rode `bash ~/jarvis/scripts/app.sh` no Terminal e abra http://127.0.0.1:8765 no Chrome.
+- Ao abrir, aparece uma janela do **Terminal** chamada "Jarvis (motor - deixe aberto)". É ela que ouve o microfone (o Mac só dá permissão de microfone ao Terminal, não a apps caseiros). Pode minimizar, mas **não feche**.
+- O Terminal precisa estar ligado em **Ajustes do Sistema → Privacidade e Segurança → Microfone**.
 - O registro de funcionamento fica em `~/.openjarvis/app.log`.
 
 ## Modo show no Terminal ("Olá, Jarvis" ou duas palmas)

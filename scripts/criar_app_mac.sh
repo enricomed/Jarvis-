@@ -33,7 +33,12 @@ LOG="\$HOME/.openjarvis/app.log"
 URL="http://127.0.0.1:8765"
 mkdir -p "\$HOME/.openjarvis"
 if ! /usr/bin/curl -s -m 2 "\$URL/estado" >/dev/null; then
-  nohup /bin/bash "\$RAIZ/scripts/app.sh" >"\$LOG" 2>&1 &
+  # O motor roda dentro do Terminal: o Mac já deu ao Terminal a permissão de microfone
+  # (apps caseiros como este não recebem o pedido de permissão).
+  INICIO="\$HOME/.openjarvis/iniciar_jarvis.command"
+  printf '#!/bin/bash\nprintf "\\\\e]0;Jarvis (motor - deixe aberto)\\\\a"\nbash "%s/scripts/app.sh" 2>&1 | tee "%s"\n' "\$RAIZ" "\$LOG" > "\$INICIO"
+  chmod +x "\$INICIO"
+  open -g -a Terminal "\$INICIO"
   for i in \$(seq 1 60); do /usr/bin/curl -s -m 1 "\$URL/estado" >/dev/null && break; sleep 1; done
 fi
 if [ -d "/Applications/Google Chrome.app" ]; then
