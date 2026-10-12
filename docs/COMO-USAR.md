@@ -74,7 +74,9 @@ O Jarvis usa o Claude, na nuvem, **só quando você pede uma pesquisa**. Todo o 
 
 **Usar:**
 - Por texto: `bash ~/jarvis/scripts/pesquisa.sh "últimas resoluções da ANS sobre OPME"`
-- Por voz (modo palmas): comece a frase com **"pesquise…"**, "procure…" ou "busque na internet…". Ele avisa "Pesquisando na internet…".
+- Por voz (modo palmas): pergunte normalmente. Ele pesquisa sozinho quando a pergunta depende da internet (palavras como "pesquise", "hoje", "notícia", "cotação", "previsão do tempo", "preço", "resultado"…) e diz "Um momento, vou pesquisar."
+- Se o cérebro local responder que não tem acesso à internet, o Jarvis refaz a pergunta na nuvem automaticamente.
+- A busca é feita pelo próprio Claude, nos servidores da Anthropic (não depende de buscadores gratuitos).
 
 **Regras:**
 - Não use pesquisa com nome ou dados de paciente: a pergunta sai do computador.

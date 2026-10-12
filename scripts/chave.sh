@@ -24,6 +24,7 @@ echo "Chave guardada em $ARQ (só o seu usuário consegue ler)."
 echo "Instalando as peças de nuvem e pesquisa..."
 cd "$RAIZ/openjarvis"
 uv sync --inexact --extra desktop --extra voice --extra memory-pdf --extra inference-cloud --extra tools-search
+# (inexact: mantém a peça de memória em Rust já montada)
 
 echo "Testando..."
 bash "$RAIZ/scripts/pesquisa.sh" "Qual é a data de hoje e uma notícia importante de saúde no Brasil desta semana? Responda em duas frases."

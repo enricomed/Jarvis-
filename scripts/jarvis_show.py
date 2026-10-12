@@ -52,10 +52,19 @@ TURNOS_DE_HISTORICO = 6
 TOKENS_POR_RESPOSTA = 220  # resposta falada curta = gera e fala mais rápido
 MANTER_CARREGADO_A_CADA = 240  # s; o Ollama descarrega o modelo após 5 min parado
 
-# Só pedidos explícitos de pesquisa vão para a nuvem; todo o resto fica local.
-GATILHOS_PESQUISA = ("pesquis", "procur", "busqu", "busca ", "na internet", "na web",
-                     "noticia", "no google")
-MODELO_NUVEM = os.environ.get("JARVIS_MODELO_NUVEM", "claude-opus-5-5")
+# Pedidos que dependem da internet vão para a nuvem; o resto fica local.
+GATILHOS_PESQUISA = (
+    "pesquis", "procur", "busqu", "busca", "internet", "na web", "google", "site",
+    "noticia", "hoje", "agora", "atual", "ultim", "recente", "esta semana", "este mes",
+    "cotacao", "dolar", "euro", "bolsa", "previsao do tempo", "clima", "temperatura",
+    "quem ganhou", "resultado", "placar", "preco", "quanto custa", "endereco", "horario",
+)
+# Se o cérebro local responder que não tem acesso à internet, refazemos na nuvem.
+SINAIS_SEM_INTERNET = (
+    "nao tenho acesso", "nao consigo acessar", "tempo real", "informacoes atualizadas",
+    "dados atualizados", "acesso a internet", "nao posso navegar", "minha data de corte",
+    "meu conhecimento", "nao tenho como verificar",
+)
 
 
 def escolher_mic(valor: str | None) -> int | None:
@@ -119,9 +128,7 @@ class Conversa:
         self.jarvis = Jarvis(config=config)
         self.voz = VoiceSession(config)
         self.modelo = config.intelligence.default_model or None
-        self.nuvem = None
-        if os.environ.get("ANTHROPIC_API_KEY"):
-            self.nuvem = Jarvis(config=config, engine_key="cloud", model=MODELO_NUVEM)
+        self.nuvem = bool(os.environ.get("ANTHROPIC_API_KEY"))
         self.host_ollama = getattr(getattr(config.engine, "ollama", None), "host", "") or "http://localhost:11434"
 
     def aquecer(self) -> None:
@@ -198,18 +205,19 @@ class Conversa:
                 return
 
             pesquisa = any(g in _normalizar(fala) for g in GATILHOS_PESQUISA)
-            if pesquisa and self.nuvem is None:
+            if pesquisa and not self.nuvem:
                 self.falar("Para pesquisar na internet, falta configurar a chave da nuvem, Doutor.")
                 continue
-            self.console.print("[dim]Pesquisando na internet…[/dim]" if pesquisa else "[dim]Pensando…[/dim]")
             t_pensar = time.monotonic()
             try:
                 if pesquisa:
-                    resposta = self.nuvem.ask(self._montar_pergunta(historico, fala), agent="orchestrator",
-                                              tools=["web_search"], model=MODELO_NUVEM, max_tokens=1500)
+                    resposta = self._pesquisar(historico, fala)
                 else:
+                    self.console.print("[dim]Pensando…[/dim]")
                     resposta = self.jarvis.ask(self._montar_pergunta(historico, fala), agent="simple",
                                                model=self.modelo, max_tokens=TOKENS_POR_RESPOSTA)
+                    if self.nuvem and any(x in _normalizar(resposta) for x in SINAIS_SEM_INTERNET):
+                        resposta = self._pesquisar(historico, fala)
             except Exception as erro:
                 self.console.print(f"[red]Erro ao gerar resposta: {erro}[/red]")
                 self.falar("Desculpe, Doutor, tive um problema para responder.")
@@ -219,6 +227,13 @@ class Conversa:
             self.falar(resposta)
             self.console.print(f"[dim](pensar {t_falar - t_pensar:.1f} s · falar {time.monotonic() - t_falar:.1f} s)[/dim]")
             historico = (historico + [(fala, resposta)])[-TURNOS_DE_HISTORICO:]
+
+    def _pesquisar(self, historico: list[tuple[str, str]], fala: str) -> str:
+        from nuvem import pesquisar
+
+        self.console.print("[dim]Pesquisando na internet…[/dim]")
+        self.falar("Um momento, vou pesquisar.")
+        return pesquisar(self._montar_pergunta(historico, fala), falado=True)
 
     @staticmethod
     def _montar_pergunta(historico: list[tuple[str, str]], fala: str) -> str:

@@ -9,8 +9,9 @@ Antes de tudo: `cd openjarvis && uv run jarvis doctor`. Ele diz exatamente o que
 | **Windows:** comando não reconhecido logo após instalar | Feche e abra o Prompt de Comando (o PATH só atualiza em janela nova) |
 | Erro com Python 3.14 | O projeto exige 3.10 a 3.13. Rode `uv python pin 3.12` dentro de `openjarvis/` e repita `uv sync --extra desktop --extra voice --extra memory-pdf` |
 | `Failed to set up rate limiter: No module named 'openjarvis_rust'` ou "Rust extension: building" que nunca termina | Falta montar a peça de memória. Mac: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \| sh -s -- -y`, feche e abra o Terminal, depois `cd ~/jarvis/openjarvis && uv run maturin develop --release -m rust/crates/openjarvis-python/Cargo.toml`. Windows: além do Rust, precisa do "Visual Studio Build Tools" (C++) |
-| Pesquisa dá "Search error" ou "403" | O buscador gratuito recusou. Crie uma chave grátis em tavily.com e rode `echo 'export TAVILY_API_KEY=SUA_CHAVE' >> ~/.openjarvis/chaves.env` (troque SUA_CHAVE) |
-| Pesquisa diz "Anthropic client not available" | Rode de novo `bash ~/jarvis/scripts/chave.sh` |
+| Pesquisa diz "Falta a chave" ou "falta configurar a chave da nuvem" | Rode `bash ~/jarvis/scripts/chave.sh` e depois reinicie o modo palmas |
+| Pesquisa dá erro com "credit balance" | Falta crédito: console.anthropic.com → Billing |
+| Pesquisa dá erro com "authentication" ou "invalid x-api-key" | Chave errada ou apagada: crie outra no console e rode `bash ~/jarvis/scripts/chave.sh` |
 | Ollama não responde | Mac: `brew services start ollama`. Windows: abra o app Ollama (ícone ao lado do relógio). Ou rode `ollama serve` |
 | Voz ou microfone mudos | Dê permissão de microfone ao Terminal. Mac: Ajustes → Privacidade e Segurança → Microfone. Windows: Configurações → Privacidade → Microfone |
 | **Mac:** Kokoro não acha o espeak | `export PHONEMIZER_ESPEAK_LIBRARY=$(brew --prefix)/lib/libespeak-ng.dylib` e `export ESPEAK_DATA_PATH=$(brew --prefix)/share/espeak-ng-data` |
