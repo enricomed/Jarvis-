@@ -1,8 +1,11 @@
 """Modo show: duas palmas abrem a conversa por voz com o Jarvis.
 
 Fica ouvindo o microfone. Ao detectar duas palmas seguidas, toca
-voz/jingle.mp3 ou voz/jingle.wav (se existir) e abre `jarvis chat --voice`. Quando a
-conversa termina, volta a esperar palmas. Ctrl+C encerra.
+voz/jingle.mp3 ou voz/jingle.wav (se existir) e abre uma conversa por voz
+mãos-livres: você fala, ele responde, sem apertar Enter. A conversa termina
+quando você diz "obrigado, Jarvis" (ou "pode encerrar", "até logo") ou fica
+em silêncio duas vezes seguidas; aí ele volta a esperar palmas.
+Ctrl+C encerra tudo.
 
 Rodar a partir da pasta openjarvis/:
     uv run python ../scripts/jarvis_show.py
@@ -19,9 +22,11 @@ Ajustes (variáveis de ambiente ou argumentos):
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import os
-import subprocess
+import re
 import sys
+import unicodedata
 import time
 from pathlib import Path
 
@@ -36,6 +41,11 @@ BLOCO = 512  # ~32 ms
 INTERVALO_MIN = 0.12  # s entre as duas palmas
 INTERVALO_MAX = 0.80
 REFRATARIO = 0.08  # ignora o eco da mesma palma
+
+FRASES_SAIDA = ("obrigado jarvis", "obrigada jarvis", "pode encerrar", "encerrar conversa",
+                "ate logo", "tchau jarvis", "pode descansar")
+SILENCIOS_PARA_SAIR = 2
+TURNOS_DE_HISTORICO = 6
 
 
 def escolher_mic(valor: str | None) -> int | None:
@@ -72,9 +82,81 @@ def tocar_jingle() -> None:
         print(f"(não consegui tocar o jingle: {erro})")
 
 
-def abrir_conversa(persona: str) -> None:
-    cmd = [sys.executable, "-m", "openjarvis.cli", "chat", "--voice", "--persona", persona]
-    subprocess.run(cmd)
+def _normalizar(texto: str) -> str:
+    sem_acento = unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode()
+    return re.sub(r"[^a-z ]", "", sem_acento.lower()).strip()
+
+
+def _para_fala(texto: str) -> str:
+    """Remove marcações de texto (markdown) que soariam estranhas faladas."""
+    texto = re.sub(r"[*_`#>]+ ?", "", texto)
+    texto = re.sub(r"^\s*[-•]\s*", "", texto, flags=re.MULTILINE)
+    return texto.strip()
+
+
+class Conversa:
+    """Conversa por voz mãos-livres usando as peças do próprio OpenJarvis."""
+
+    def __init__(self, persona: str) -> None:
+        from openjarvis import Jarvis
+        from openjarvis.cli._voice_chat import VoiceSession
+        from openjarvis.core.config import load_config
+        from rich.console import Console
+
+        config = load_config()
+        config.memory_files = dataclasses.replace(config.memory_files, persona_name=persona)
+        self.console = Console()
+        self.jarvis = Jarvis(config=config)
+        self.voz = VoiceSession(config)
+
+    def falar(self, texto: str) -> None:
+        from openjarvis.cli._voice_chat import speak
+
+        speak(_para_fala(texto), self.console, self.voz)
+
+    def rodar(self) -> None:
+        from openjarvis.cli._voice_chat import VOICE_EXIT, record_voice
+
+        historico: list[tuple[str, str]] = []
+        silencios = 0
+        self.falar("Pois não, Doutor?")
+        while True:
+            fala = record_voice(self.console, self.voz)
+            if fala is VOICE_EXIT:
+                return
+            if not fala:
+                silencios += 1
+                if silencios >= SILENCIOS_PARA_SAIR:
+                    self.falar("Estarei por aqui, Doutor.")
+                    return
+                continue
+            silencios = 0
+            if any(f in _normalizar(fala) for f in FRASES_SAIDA):
+                self.falar("Até logo, Doutor.")
+                return
+
+            self.console.print("[dim]Pensando…[/dim]")
+            try:
+                resposta = self.jarvis.ask(self._montar_pergunta(historico, fala), agent="simple")
+            except Exception as erro:
+                self.console.print(f"[red]Erro ao gerar resposta: {erro}[/red]")
+                self.falar("Desculpe, Doutor, tive um problema para responder.")
+                continue
+            self.console.print(f"[bold cyan]Jarvis:[/bold cyan] {resposta}")
+            self.falar(resposta)
+            historico = (historico + [(fala, resposta)])[-TURNOS_DE_HISTORICO:]
+
+    @staticmethod
+    def _montar_pergunta(historico: list[tuple[str, str]], fala: str) -> str:
+        partes = []
+        if historico:
+            partes.append("Conversa até agora:")
+            for doutor, jarvis in historico:
+                partes.append(f"Doutor: {doutor}\nJarvis: {jarvis}")
+            partes.append("")
+        partes.append(f"Fala do Doutor agora: {fala}")
+        partes.append("(Conversa por voz: responda curto, em frases faladas, sem listas nem markdown.)")
+        return "\n".join(partes)
 
 
 def calibrar(mic: int | None) -> None:
@@ -131,17 +213,22 @@ def main() -> int:
         listar_mics()
         return 0
     mic = escolher_mic(a.mic)
+    if mic is not None:
+        # A gravação da conversa (OpenJarvis) usa o microfone padrão.
+        sd.default.device = (mic, sd.default.device[1])
     if a.calibrar:
         calibrar(mic)
         return 0
 
+    print("Carregando o Jarvis (ouvidos, voz e cérebro)...")
+    conversa = Conversa(a.persona)
     print(f"Jarvis em espera. Bata duas palmas. (limiar {a.limiar}, persona {a.persona}, Ctrl+C sai)")
     try:
         while True:
             esperar_duas_palmas(mic, a.limiar)
-            print("\nPois não, Doutor.")
+            print("\nPalmas detectadas.")
             tocar_jingle()
-            abrir_conversa(a.persona)
+            conversa.rodar()
             print("\nDe volta à espera. Duas palmas para chamar.")
     except KeyboardInterrupt:
         print("\nAté logo, Doutor.")

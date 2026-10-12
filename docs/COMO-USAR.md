@@ -45,13 +45,22 @@ jarvis ask --persona estudo "Critérios atuais para desmame ventilatório em ido
 ## Modo show (duas palmas)
 
 ```bash
-bash scripts/show.sh --calibrar        # mede ruído e palma, sugere a sensibilidade
-bash scripts/show.sh --listar-mics     # mostra os microfones
-JARVIS_CLAP_THRESH=0.35 bash scripts/show.sh
+bash ~/jarvis/scripts/show.sh --calibrar        # mede ruído e palma, sugere a sensibilidade
+bash ~/jarvis/scripts/show.sh                   # liga o modo palmas
 ```
-No Windows: `scripts\show.bat --calibrar`, e para ajustar `set JARVIS_CLAP_THRESH=0.35` antes.
 
-Abrir já num modo: `JARVIS_PERSONA=opme bash scripts/show.sh`.
+Como funciona:
+1. Bata **duas palmas**. Ele toca o jingle (se houver) e diz "Pois não, Doutor?".
+2. **Fale normalmente.** Não precisa apertar nada: ele ouve, pensa e responde em voz. Depois volta a ouvir.
+3. Para encerrar, diga **"obrigado, Jarvis"**, "pode encerrar" ou "até logo", ou simplesmente fique em silêncio duas vezes. Ele volta a esperar palmas.
+4. **Ctrl + C** desliga o modo palmas.
+
+Ajustes:
+- Sensibilidade: `JARVIS_CLAP_THRESH=0.35 bash ~/jarvis/scripts/show.sh` (subir = menos sensível).
+- Microfone: `bash ~/jarvis/scripts/show.sh --listar-mics` e depois `JARVIS_MIC=<número> bash ~/jarvis/scripts/show.sh`.
+- Abrir já no modo OPME: `JARVIS_PERSONA=opme bash ~/jarvis/scripts/show.sh`.
+
+No Windows: `scripts\show.bat`, com `set JARVIS_CLAP_THRESH=0.35` antes para ajustar.
 
 Jingle de abertura: coloque `jingle.mp3` (ou `.wav`) na pasta `voz/`.
 
