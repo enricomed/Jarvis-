@@ -42,27 +42,30 @@ jarvis ask --persona estudo "Critérios atuais para desmame ventilatório em ido
    ```
 3. Pronto: nas conversas, o Jarvis busca trechos relevantes antes de responder. Para conferir o que ele acha: `uv run jarvis memory search "DUT artroplastia"`.
 
-## Modo show (duas palmas)
+## Modo show ("Olá, Jarvis" ou duas palmas)
 
 ```bash
-bash ~/jarvis/scripts/show.sh --calibrar        # mede ruído e palma, sugere a sensibilidade
-bash ~/jarvis/scripts/show.sh                   # liga o modo palmas
+bash ~/jarvis/scripts/show.sh                     # ativação pela voz: "Olá, Jarvis" (padrão)
+bash ~/jarvis/scripts/show.sh --ativacao palmas   # ativação por duas palmas
 ```
 
 Como funciona:
-1. Bata **duas palmas**. Ele toca o jingle (se houver) e diz "Pois não, Doutor?".
-2. **Fale normalmente.** Não precisa apertar nada: ele ouve, pensa e responde em voz. Depois volta a ouvir.
-3. Para encerrar, diga **"obrigado, Jarvis"**, "pode encerrar" ou "até logo", ou simplesmente fique em silêncio duas vezes. Ele volta a esperar palmas.
-4. **Ctrl + C** desliga o modo palmas.
+1. Espere aparecer **"Jarvis em espera"**.
+2. Diga **"Olá, Jarvis"**. Ele responde "Pois não, Doutor?". Também dá para falar tudo junto: *"Olá, Jarvis, qual a previsão do tempo para amanhã?"*.
+3. **Fale normalmente.** Não precisa apertar nada: ele ouve, pensa e responde em voz. Depois volta a ouvir.
+4. Para encerrar, diga **"obrigado, Jarvis"**, "pode encerrar" ou "até logo", ou fique em silêncio duas vezes. Ele volta a esperar.
+5. **Ctrl + C** desliga.
+
+Tudo é local: o computador só transcreve trechos em que há voz e procura a palavra "Jarvis". Nada sai da máquina enquanto ele espera.
 
 Ajustes:
-- Sensibilidade: `JARVIS_CLAP_THRESH=0.35 bash ~/jarvis/scripts/show.sh` (subir = menos sensível).
-- Microfone: `bash ~/jarvis/scripts/show.sh --listar-mics` e depois `JARVIS_MIC=<número> bash ~/jarvis/scripts/show.sh`.
-- Abrir já no modo OPME: `JARVIS_PERSONA=opme bash ~/jarvis/scripts/show.sh`.
+- Ver o que ele está ouvindo enquanto espera: `bash ~/jarvis/scripts/show.sh --mostrar`
+- Microfone: `bash ~/jarvis/scripts/show.sh --listar-mics` e depois `JARVIS_MIC=<número> bash ~/jarvis/scripts/show.sh`
+- Abrir já no modo OPME: `JARVIS_PERSONA=opme bash ~/jarvis/scripts/show.sh`
+- Palmas: calibre com `--calibrar` e ajuste com `JARVIS_CLAP_THRESH=0.5`
+- Jingle de abertura: coloque `jingle.mp3` (ou `.wav`) na pasta `voz/`
 
-No Windows: `scripts\show.bat`, com `set JARVIS_CLAP_THRESH=0.35` antes para ajustar.
-
-Jingle de abertura: coloque `jingle.mp3` (ou `.wav`) na pasta `voz/`.
+No Windows: `scripts\show.bat` (mesmas opções).
 
 ## Pesquisa na internet (cérebro na nuvem)
 

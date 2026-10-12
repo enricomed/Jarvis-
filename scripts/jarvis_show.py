@@ -1,4 +1,8 @@
-"""Modo show: duas palmas abrem a conversa por voz com o Jarvis.
+"""Modo show: "Olá, Jarvis" (ou duas palmas) abre a conversa por voz.
+
+Padrão: ativação pela voz, dizendo "Olá, Jarvis" (dá para falar o pedido
+junto: "Olá, Jarvis, qual a previsão do tempo para amanhã?"). Para voltar às
+palmas: --ativacao palmas (ou JARVIS_ATIVACAO=palmas).
 
 Fica ouvindo o microfone. Ao detectar duas palmas seguidas, toca
 voz/jingle.mp3 ou voz/jingle.wav (se existir) e abre uma conversa por voz
@@ -180,15 +184,20 @@ class Conversa:
 
         speak(_para_fala(texto), self.console, self.voz)
 
-    def rodar(self) -> None:
+    def rodar(self, primeira_fala: str | None = None) -> None:
         from openjarvis.cli._voice_chat import VOICE_EXIT, record_voice
 
         historico: list[tuple[str, str]] = []
         silencios = 0
-        self.falar("Pois não, Doutor?")
+        if not primeira_fala:
+            self.falar("Pois não, Doutor?")
         while True:
             t_ouvir = time.monotonic()
-            fala = record_voice(self.console, self.voz)
+            if primeira_fala:
+                fala, primeira_fala = primeira_fala, None
+                self.console.print(f"[bold]Você:[/bold] {fala}")
+            else:
+                fala = record_voice(self.console, self.voz)
             if isinstance(fala, str) and fala:
                 self.console.print(f"[dim](ouvir + transcrever {time.monotonic() - t_ouvir:.1f} s)[/dim]")
             if fala is VOICE_EXIT:
@@ -296,13 +305,104 @@ def esperar_duas_palmas(mic: int | None, limiar: float) -> None:
             time.sleep(0.05)
 
 
+VARIANTES_JARVIS = {"jarvis", "jarves", "jarbas", "jarvi", "jarviz", "jarvys", "javis", "jervis",
+                    "djarvis", "jarviss", "garvis"}
+
+
+def _achar_jarvis(texto: str) -> int | None:
+    """Posição (em palavras) logo após "Jarvis" na frase, ou None se não foi dito."""
+    from difflib import SequenceMatcher
+
+    palavras = _normalizar(texto).split()
+    for i, p in enumerate(palavras):
+        if p in VARIANTES_JARVIS or SequenceMatcher(None, p, "jarvis").ratio() >= 0.8:
+            return i + 1
+    return None
+
+
+class AtivadorPorVoz:
+    """Fica ouvindo e acorda quando alguém diz "Olá, Jarvis" (tudo local).
+
+    Só transcreve trechos com voz (detecção por energia), com um Whisper leve.
+    Retorna o que foi dito depois de "Jarvis", se houver (ex.: "Olá Jarvis, que
+    horas são em Lisboa?" -> "que horas são em Lisboa?").
+    """
+
+    TAXA = 16_000
+    BLOCO = 480  # 30 ms
+    PRE_ROLL = 10  # blocos guardados antes do início da fala (~0,3 s)
+    FIM_SILENCIO = 0.7  # s de silêncio que encerram o trecho
+    MAX_TRECHO = 6.0  # s
+    MIN_TRECHO = 0.35  # s
+
+    def __init__(self, mic: int | None, mostrar: bool = False) -> None:
+        from faster_whisper import WhisperModel
+
+        self.mic = mic
+        self.mostrar = mostrar
+        self.modelo = WhisperModel(os.environ.get("JARVIS_WAKE_MODEL", "base"),
+                                   device="cpu", compute_type="int8")
+        self.ruido = 0.005
+
+    def _transcrever(self, audio: np.ndarray) -> str:
+        kwargs = dict(language="pt", beam_size=1, condition_on_previous_text=False, vad_filter=False)
+        try:
+            segmentos, _ = self.modelo.transcribe(audio, hotwords="Jarvis", **kwargs)
+        except TypeError:  # versões antigas do faster-whisper não têm hotwords
+            segmentos, _ = self.modelo.transcribe(audio, **kwargs)
+        return " ".join(seg.text for seg in segmentos if seg.no_speech_prob < 0.6).strip()
+
+    def esperar(self) -> str:
+        from collections import deque
+
+        antes: deque = deque(maxlen=self.PRE_ROLL)
+        trecho: list[np.ndarray] = []
+        silencio = 0.0
+        dur_bloco = self.BLOCO / self.TAXA
+        with sd.InputStream(samplerate=self.TAXA, blocksize=self.BLOCO, channels=1,
+                            dtype="float32", device=self.mic) as fluxo:
+            while True:
+                bloco, _ = fluxo.read(self.BLOCO)
+                bloco = bloco[:, 0].copy()
+                rms = float(np.sqrt(np.mean(bloco ** 2)))
+                tem_voz = rms > max(0.01, 3.5 * self.ruido)
+                if not trecho:
+                    if tem_voz:
+                        trecho = list(antes) + [bloco]
+                        silencio = 0.0
+                    else:
+                        self.ruido = 0.97 * self.ruido + 0.03 * rms
+                        antes.append(bloco)
+                    continue
+                trecho.append(bloco)
+                silencio = 0.0 if tem_voz else silencio + dur_bloco
+                duracao = len(trecho) * dur_bloco
+                if silencio < self.FIM_SILENCIO and duracao < self.MAX_TRECHO:
+                    continue
+                audio = np.concatenate(trecho)
+                trecho, antes = [], deque(maxlen=self.PRE_ROLL)
+                if duracao < self.MIN_TRECHO:
+                    continue
+                texto = self._transcrever(audio)
+                if self.mostrar and texto:
+                    print(f"  (ouvi: {texto})")
+                pos = _achar_jarvis(texto)
+                if pos is not None:
+                    resto = " ".join(texto.split()[pos:]).strip(" ,.!?")
+                    return resto if len(resto.split()) >= 2 else ""
+
+
 def main() -> int:
-    p = argparse.ArgumentParser(description="Duas palmas abrem o Jarvis por voz.")
+    p = argparse.ArgumentParser(description='Diga "Olá, Jarvis" (ou bata duas palmas) para conversar.')
+    p.add_argument("--ativacao", choices=("voz", "palmas"),
+                   default=os.environ.get("JARVIS_ATIVACAO", "voz"),
+                   help='voz = "Olá, Jarvis" (padrão); palmas = duas palmas')
     p.add_argument("--limiar", type=float, default=float(os.environ.get("JARVIS_CLAP_THRESH", "0.30")))
     p.add_argument("--mic", default=os.environ.get("JARVIS_MIC"))
     p.add_argument("--persona", default=os.environ.get("JARVIS_PERSONA", "jarvis"))
     p.add_argument("--listar-mics", action="store_true")
-    p.add_argument("--calibrar", action="store_true")
+    p.add_argument("--calibrar", action="store_true", help="calibra a sensibilidade das palmas")
+    p.add_argument("--mostrar", action="store_true", help="mostra o que ele ouve enquanto espera")
     a = p.parse_args()
 
     if a.listar_mics:
@@ -319,14 +419,24 @@ def main() -> int:
     print("Carregando o Jarvis (ouvidos, voz e cérebro)...")
     conversa = Conversa(a.persona)
     conversa.aquecer()
-    print(f"Jarvis em espera. Bata duas palmas. (limiar {a.limiar}, persona {a.persona}, Ctrl+C sai)")
+    if a.ativacao == "voz":
+        ativador = AtivadorPorVoz(mic, mostrar=a.mostrar)
+        chamada = 'Diga "Olá, Jarvis".'
+    else:
+        chamada = "Bata duas palmas."
+    print(f"Jarvis em espera. {chamada} (persona {a.persona}, Ctrl+C sai)")
     try:
         while True:
-            esperar_duas_palmas(mic, a.limiar)
-            print("\nPalmas detectadas.")
+            if a.ativacao == "voz":
+                primeira = ativador.esperar()
+                print("\nChamado pela voz.")
+            else:
+                esperar_duas_palmas(mic, a.limiar)
+                primeira = ""
+                print("\nPalmas detectadas.")
             tocar_jingle()
-            conversa.rodar()
-            print("\nDe volta à espera. Duas palmas para chamar.")
+            conversa.rodar(primeira or None)
+            print(f"\nDe volta à espera. {chamada}")
     except KeyboardInterrupt:
         print("\nAté logo, Doutor.")
     return 0

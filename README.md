@@ -21,7 +21,7 @@ Base: [OpenJarvis](https://github.com/open-jarvis/OpenJarvis) (Stanford), seguin
 2. **Regra de verdade embutida**: ele é instruído a nunca inventar resolução, código TUSS, registro ANVISA, dose ou referência, e a dizer quando não sabe.
 3. **Cuidado com LGPD**: tudo local; ele lembra de anonimizar dado de paciente. Veja [docs/SEGURANCA-LGPD.md](docs/SEGURANCA-LGPD.md).
 4. **Base de conhecimento**: coloque PDFs em `conhecimento/` e ele consulta antes de responder.
-5. **Modo show com palma** (duas palmas abrem a conversa por voz), com calibração automática do microfone.
+5. **Modo show**: diga **"Olá, Jarvis"** (ou bata duas palmas) e converse por voz sem apertar nada.
 
 ## Instalação (escolha uma)
 
@@ -51,7 +51,7 @@ jarvis                                         # conversa por texto
 jarvis chat --voice                            # conversa por voz
 jarvis chat --persona opme                     # modo OPME
 jarvis ask --persona comunicacao "E-mail aos cooperados avisando a nova rotina de OPME"
-bash scripts/show.sh                           # duas palmas (Windows: scripts\show.bat)
+bash scripts/show.sh                           # diga "Olá, Jarvis" (Windows: scripts\show.bat)
 bash scripts/pesquisa.sh "..."                 # pesquisa na internet (nuvem, depois de scripts/chave.sh)
 ```
 

@@ -18,6 +18,8 @@ Antes de tudo: `cd openjarvis && uv run jarvis doctor`. Ele diz exatamente o que
 | **Windows:** Kokoro não acha o espeak (raro) | `winget install -e --id eSpeak-NG.eSpeak-NG` e `setx PHONEMIZER_ESPEAK_LIBRARY "C:\Program Files\eSpeak NG\libespeak-ng.dll"`, depois abra um terminal novo |
 | Responde em inglês | Rode de novo `uv run python ../scripts/aplicar_perfil.py` e confira `uv run jarvis config show` (deve ter `language = "pt"` e `persona_name = "jarvis"`) |
 | Muito lento | Troque para `gemma4:e2b` (veja COMO-USAR.md) e feche programas pesados |
+| "Olá, Jarvis" não acorda | Rode com `--mostrar` e veja o que ele entende. Fale mais perto do microfone, com uma pausa curta depois de "Jarvis". Se ele escrever outro nome, me avise para incluir a variação |
+| Acorda sozinho (TV, conversa) | Só acorda quando ouve algo parecido com "Jarvis". Se acontecer, rode com `--mostrar` para ver o que ele entendeu |
 | Palma abre sozinha | Suba `JARVIS_CLAP_THRESH` (ex.: 0.45) ou rode `--calibrar` |
 | Palma não pega | Desça `JARVIS_CLAP_THRESH` (ex.: 0.20) ou escolha outro microfone com `JARVIS_MIC` |
 | Jingle não toca | Converta para `.wav` e salve como `voz/jingle.wav` |
