@@ -30,8 +30,20 @@ def pasta_openjarvis() -> Path:
     return Path.home() / ".openjarvis"
 
 
+# Substitui o texto-base do OpenJarvis ("identifique-se como OpenJarvis"),
+# que sobrepõe a persona em modelos pequenos.
+PROMPT_BASE = (
+    "Você é o Jarvis, assistente pessoal do Dr. Enrico Stucchi, rodando "
+    "localmente no computador dele, sem nuvem. Responda sempre em português "
+    "do Brasil. Se perguntarem quem você é, diga que é o Jarvis do Dr. Enrico. "
+    "Siga a persona e as informações sobre o usuário abaixo. Seja direto, "
+    "útil e preciso; nunca invente fatos."
+)
+
+
 def configuracoes(modelo: str, whisper: str) -> list[tuple[str, str]]:
     return [
+        ("agent.default_system_prompt", PROMPT_BASE),
         ("engine.default", "ollama"),
         ("intelligence.default_model", modelo),
         ("security.profile", "personal"),
@@ -65,7 +77,8 @@ def gravar_config(chave: str, valor: str) -> bool:
     cmd = [sys.executable, "-m", "openjarvis.cli", "config", "set", chave, valor]
     r = subprocess.run(cmd, capture_output=True, text=True)
     ok = r.returncode == 0
-    print(f"  {'ok ' if ok else 'ERRO'} {chave} = {valor}")
+    mostrar = valor if len(valor) <= 60 else valor[:57] + "..."
+    print(f"  {'ok ' if ok else 'ERRO'} {chave} = {mostrar}")
     if not ok:
         print("       " + (r.stderr or r.stdout).strip().replace("\n", "\n       "))
     return ok
