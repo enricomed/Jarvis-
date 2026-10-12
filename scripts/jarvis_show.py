@@ -24,8 +24,11 @@ from __future__ import annotations
 import argparse
 import dataclasses
 import os
+import json
 import re
 import sys
+import threading
+import urllib.request
 import unicodedata
 import time
 from pathlib import Path
@@ -46,6 +49,8 @@ FRASES_SAIDA = ("obrigado jarvis", "obrigada jarvis", "pode encerrar", "encerrar
                 "ate logo", "tchau jarvis", "pode descansar")
 SILENCIOS_PARA_SAIR = 2
 TURNOS_DE_HISTORICO = 6
+TOKENS_POR_RESPOSTA = 220  # resposta falada curta = gera e fala mais rápido
+MANTER_CARREGADO_A_CADA = 240  # s; o Ollama descarrega o modelo após 5 min parado
 
 
 def escolher_mic(valor: str | None) -> int | None:
@@ -108,6 +113,40 @@ class Conversa:
         self.console = Console()
         self.jarvis = Jarvis(config=config)
         self.voz = VoiceSession(config)
+        self.modelo = config.intelligence.default_model or None
+        self.host_ollama = getattr(getattr(config.engine, "ollama", None), "host", "") or "http://localhost:11434"
+
+    def aquecer(self) -> None:
+        """Carrega cérebro, ouvidos e voz antes da primeira palma."""
+        t = time.monotonic()
+        try:
+            self.jarvis.ask("Responda só: ok", agent="simple", model=self.modelo, max_tokens=5)
+        except Exception as erro:
+            self.console.print(f"[yellow]Aviso: o cérebro não respondeu no aquecimento ({erro}).[/yellow]")
+        self.voz.get_stt_backend()
+        tts = self.voz.get_tts_backend()
+        if tts is not None:
+            try:
+                voz_id, _ = self.voz.voice_for_backend(tts)
+                tts.synthesize("ok", voice_id=voz_id, output_format="wav")
+            except Exception:
+                pass
+        self.console.print(f"[dim]Pronto em {time.monotonic() - t:.0f} s.[/dim]")
+        threading.Thread(target=self._manter_carregado, daemon=True).start()
+
+    def _manter_carregado(self) -> None:
+        """Pede ao Ollama para manter o modelo na memória (evita recarregar a cada palma)."""
+        if not self.modelo:
+            return
+        corpo = json.dumps({"model": self.modelo, "keep_alive": "30m"}).encode()
+        while True:
+            try:
+                req = urllib.request.Request(f"{self.host_ollama.rstrip('/')}/api/generate", data=corpo,
+                                             headers={"Content-Type": "application/json"})
+                urllib.request.urlopen(req, timeout=60).read()
+            except Exception:
+                pass
+            time.sleep(MANTER_CARREGADO_A_CADA)
 
     def falar(self, texto: str) -> None:
         from openjarvis.cli._voice_chat import speak
@@ -121,7 +160,10 @@ class Conversa:
         silencios = 0
         self.falar("Pois não, Doutor?")
         while True:
+            t_ouvir = time.monotonic()
             fala = record_voice(self.console, self.voz)
+            if isinstance(fala, str) and fala:
+                self.console.print(f"[dim](ouvir + transcrever {time.monotonic() - t_ouvir:.1f} s)[/dim]")
             if fala is VOICE_EXIT:
                 return
             if not fala:
@@ -136,14 +178,18 @@ class Conversa:
                 return
 
             self.console.print("[dim]Pensando…[/dim]")
+            t_pensar = time.monotonic()
             try:
-                resposta = self.jarvis.ask(self._montar_pergunta(historico, fala), agent="simple")
+                resposta = self.jarvis.ask(self._montar_pergunta(historico, fala), agent="simple",
+                                           model=self.modelo, max_tokens=TOKENS_POR_RESPOSTA)
             except Exception as erro:
                 self.console.print(f"[red]Erro ao gerar resposta: {erro}[/red]")
                 self.falar("Desculpe, Doutor, tive um problema para responder.")
                 continue
+            t_falar = time.monotonic()
             self.console.print(f"[bold cyan]Jarvis:[/bold cyan] {resposta}")
             self.falar(resposta)
+            self.console.print(f"[dim](pensar {t_falar - t_pensar:.1f} s · falar {time.monotonic() - t_falar:.1f} s)[/dim]")
             historico = (historico + [(fala, resposta)])[-TURNOS_DE_HISTORICO:]
 
     @staticmethod
@@ -229,6 +275,7 @@ def main() -> int:
 
     print("Carregando o Jarvis (ouvidos, voz e cérebro)...")
     conversa = Conversa(a.persona)
+    conversa.aquecer()
     print(f"Jarvis em espera. Bata duas palmas. (limiar {a.limiar}, persona {a.persona}, Ctrl+C sai)")
     try:
         while True:
